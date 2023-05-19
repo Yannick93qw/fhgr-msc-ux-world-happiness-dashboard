@@ -1,10 +1,16 @@
 # :heart: FHGR World Happiness Dashboard :heart:
 
-## :warning: Install required Frameworks :warning:
+A dashboard that uses the data from the World Happiness Report.
+The data can be found [here](https://www.kaggle.com/datasets/usamabuttar/world-happiness-report-2005-present).
 
-### Backend :see_no_evil:
+The dashboard itself is programmed using the Python Programming Language and the following packages :snake::
 
-The backend is written with Python and the awesome `Fast API` :rocket:.
+- [Dash](https://dash.plotly.com/)
+- [Dash Bootstrap Components](https://dash-bootstrap-components.opensource.faculty.ai/)
+- [Pandas](https://github.com/pandas-dev/pandas)
+
+## :warning: Install required Packages :warning:
+
 It is good practice to create a `virtual environment` first. In order to do that simply run
 
 ```bash
@@ -31,14 +37,10 @@ In order to install the required python packages simple run the following comman
 pip install -r requirements.txt
 ```
 
-### Frontend :heart_eyes_cat:
+## Run the Application
 
-The Frontend part is written with `NextJs` (a next generation React Framework). In order to install the required dependencies make sure that NodeJs is installed. Install it manually or by using the awesome :sparkles: [NVM Manager](https://github.com/nvm-sh/nvm) :sparkles:.
-
-Then simply run the following commands
+The application can be run by typing the following command inside a terminal:
 
 ```bash
-cd frontend
-npm i
-npm run dev
+python main.py
 ```
