@@ -82,7 +82,6 @@ def update_tab_2_avg_happiness(dropdown_countries_value):
 @app.callback(Output("tab_3_bar", "figure"), Input("real_countries", "value"))
 def update_tab_3_bar(dropdown_countries_value):
     df_real_country = df_real_data_grouped_by_country.get_group(dropdown_countries_value)
-    print(df_real_country)
     fig = px.bar(df_real_country, x="Year", y="Life Ladder")
     fig.update_layout(template="plotly_white")
     return fig
