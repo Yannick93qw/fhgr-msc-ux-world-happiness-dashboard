@@ -1,6 +1,6 @@
 import math
 
-from dash import Dash, dcc, html, Input, Output, ctx
+from dash import Dash, dcc, html, Input, Output, ctx 
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
@@ -40,8 +40,9 @@ app.layout = html.Div([html.Div([html.H1("Dashboard 6")], style={'margin': '10px
         dbc.Row([dbc.Col([dcc.Graph(id="graph_1")],width=6),
                  dbc.Col([dcc.Graph(id="graph_2")],width=6)])], style={"margin": "100px 25px 25px 25px"}),]),
         dcc.Tab(label='Tab Two', id="tab_2_graphs", children=[html.Div([
-            dbc.Row([dbc.Col([dcc.Graph(id="scatter")], width=8),
-                     dbc.Col([dcc.Graph(id="bar")], width=4)]),
+            dbc.Row([dbc.Col([dcc.Graph(id="scatter")], width=4),
+                     dbc.Col([dcc.Graph(id="bar")], width=4),
+                     dbc.Col([html.Div(id="table_wrapper")], width=4)]),
             dbc.Row([dbc.Col(html.Div([dbc.Label("Number of bins:", html_for="heatmap_nbins"),
                                        dcc.Dropdown(options= [str(i) for i in range(5, 100, 5)], value='40', id='heatmap_nbins', multi=False)]),width={"size": 3},),
                      dbc.Col(html.Div([dbc.Label("Color:", html_for="heatmap_color"),
@@ -52,18 +53,18 @@ app.layout = html.Div([html.Div([html.H1("Dashboard 6")], style={'margin': '10px
 
 def update_selected_data(selected_data):
     if selected_data is None or (isinstance(selected_data, dict) and 
-       'xaxis.range[0]' not in selected_data):
-          cluster_dff = cluster_df
+                                 'xaxis.range[0]' not in selected_data):
+        cluster_dff = cluster_df
     else:
         cluster_dff = cluster_df[
-                  (cluster_df['X'] >= 
-                   selected_data.get('xaxis.range[0]')) &
-                  (cluster_df['X'] <=
-                   selected_data.get('xaxis.range[1]')) &
-                  (cluster_df['Y'] >=
-                   selected_data.get('yaxis.range[0]')) &
-                  (cluster_df['Y'] <=
-                   selected_data.get('yaxis.range[1]'))]
+                (cluster_df['X'] >= 
+                 selected_data.get('xaxis.range[0]')) &
+                (cluster_df['X'] <=
+                 selected_data.get('xaxis.range[1]')) &
+                (cluster_df['Y'] >=
+                 selected_data.get('yaxis.range[0]')) &
+                (cluster_df['Y'] <=
+                 selected_data.get('yaxis.range[1]'))]
     return cluster_dff
 
 @app.callback(Output("graph_1", "figure"), Input("color", "value"))
@@ -82,31 +83,11 @@ def update_graph_2(min_value):
     fig = px.scatter(dff, x='x', y='y')
     fig.update_layout(template="plotly_white")
     return fig
-"""
-@app.callback(Output("scatter", "figure"), Output("bar", "figure"), Input("scatter", "relayoutData"))
-def update_scatter_and_bar(selected_data):
+
+@app.callback(Output("bar", "figure"), Output("table_wrapper", "children"), Input("scatter", "relayoutData"), Input("heatmap", "relayoutData"))
+def update_bar_and_table(scatter_selected_data, heatmap_selected_data):
     PLOT_HEIGHT = 400
 
-    cluster_dff = update_selected_data(selected_data=selected_data)
-
-    fig3 = px.scatter(cluster_dff, x="X", y="Y", color="cluster", color_discrete_map=COLORS, category_orders={"cluster": ["0", "1", "2"]})
-
-    fig3.update_layout(height=PLOT_HEIGHT, template="plotly_white", coloraxis_showscale=False)
-    fig3.update_traces(marker=dict(size=8))
-
-    group_counts = cluster_dff[['cluster', 'X']].groupby('cluster').count()
-
-    fig4 = go.Figure(data=[go.Bar(x=group_counts.index, y=group_counts['X'], marker_color=[COLORS.get(i) for i in group_counts.index])])
-
-    fig4.update_layout(height=PLOT_HEIGHT, template="plotly_white", title="<b>Counts per cluster</b>", xaxis_title="cluster", title_font_size=25)
-
-    return fig3, fig4
-"""
-
-@app.callback(Output("bar", "figure"), Input("scatter", "relayoutData"), Input("heatmap", "relayoutData"))
-def update_bar(scatter_selected_data, heatmap_selected_data):
-    PLOT_HEIGHT = 400
-    #print(ctx.triggered_id)
     selected_data = scatter_selected_data if ctx.triggered_id == "scatter" else heatmap_selected_data
     cluster_dff = update_selected_data(selected_data=selected_data)
     group_counts = cluster_dff[['cluster', 'X']].groupby('cluster').count()
@@ -115,7 +96,14 @@ def update_bar(scatter_selected_data, heatmap_selected_data):
 
     fig4.update_layout(height=PLOT_HEIGHT, template="plotly_white", title="<b>Counts per cluster</b>", xaxis_title="cluster", title_font_size=25)
 
-    return fig4
+    # Implemented with reference to https://dash-bootstrap-components.opensource.faculty.ai/docs/components/table/
+    table_header = [
+            html.Thead(html.Tr([html.Th("Cluster Number"), html.Th("Number of Points")]))
+            ]
+    rows = [html.Tr([html.Td(cluster_number), html.Td(number_of_points)]) for (cluster_number, number_of_points) in zip(group_counts.index, group_counts["X"])]
+    table_body = [html.Tbody(rows)]
+    table = dbc.Table(table_header + table_body, bordered=True)
+    return fig4, table
 
 @app.callback(Output("scatter", "figure"), Input("scatter", "relayoutData"))
 def update_scatter(selected_data):
