@@ -81,7 +81,6 @@ def update_linked_charts(selected_data, number_of_clusters):
 
     group_counts = cluster_dff[['cluster', 'X']].groupby('cluster').count()
 
-    print(group_counts.index)
     bar = go.Figure(data=[go.Bar(x=group_counts.index, y=group_counts['X'], marker_color= [COLORS.get(i) for i in group_counts.index])])
     bar.update_layout(height=750, template="plotly_white", title="<b>Counts per cluster</b>", xaxis_title="cluster", title_font_size= 25)
     return scatter, selected_scatter, bar 
