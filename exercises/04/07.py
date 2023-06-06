@@ -30,16 +30,16 @@ MIN_CLUSTERS = 3
 MAX_CLUSTERS = 10 
 
 app.layout = html.Div([html.Div([html.H1("Dashboard 4")], className="header"), html.Div([dcc.Tabs(id="tabs", children=[
-                 dcc.Tab(label='Tab One', id="tab_1_graphs", children=[html.Div([
-                      dbc.Row([dbc.Col([dcc.Dropdown(options=['red','green','blue'], value='red', id='color', multi=False)], width=6),
-                               dbc.Col([dcc.Slider(min=math.floor(df['y'].min()), max=math.ceil(df['y'].max()), id="min_value")], width=6)]),
-                      dbc.Row([dbc.Col([dcc.Graph(id="graph_1")], width=6),
-                               dbc.Col([dcc.Graph(id="graph_2")], width=6)])], className="tab_content"),]),
-                 dcc.Tab(label='Tab Two', id="tab_2_graphs", children=[html.Div([
-                      dbc.Row([dbc.Col([dcc.Slider(min=MIN_CLUSTERS, max=MAX_CLUSTERS, step=1, id="number_of_clusters")], width=8)]),
-                      dbc.Row([dbc.Col([dcc.Graph(id="scatter")], width=8),
-                               dbc.Col([dcc.Graph(id="bar")], width=4)]),
-                      dbc.Row([dbc.Col([dcc.Graph(id="selected_scatter")], width=12)])], className="tab_content")]),])], className="content")])
+    dcc.Tab(label='Tab One', id="tab_1_graphs", children=[html.Div([
+        dbc.Row([dbc.Col([dcc.Dropdown(options=['red','green','blue'], value='red', id='color', multi=False)], width=6),
+                 dbc.Col([dcc.Slider(min=math.floor(df['y'].min()), max=math.ceil(df['y'].max()), id="min_value")], width=6)]),
+        dbc.Row([dbc.Col([dcc.Graph(id="graph_1")], width=6),
+                 dbc.Col([dcc.Graph(id="graph_2")], width=6)])], className="tab_content"),]),
+        dcc.Tab(label='Tab Two', id="tab_2_graphs", children=[html.Div([
+            dbc.Row([dbc.Col([dcc.Slider(min=MIN_CLUSTERS, max=MAX_CLUSTERS, step=1, id="number_of_clusters")], width=8)]),
+            dbc.Row([dbc.Col([dcc.Graph(id="scatter")], width=8),
+                     dbc.Col([dcc.Graph(id="bar")], width=4)]),
+            dbc.Row([dbc.Col([dcc.Graph(id="selected_scatter")], width=12)])], className="tab_content")]),])], className="content")])
 
 
 
