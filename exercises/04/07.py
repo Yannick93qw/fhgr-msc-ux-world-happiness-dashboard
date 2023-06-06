@@ -59,7 +59,23 @@ def update_graph_2(min_value):
     fig.update_layout(template="plotly_white")
     return fig
 
-@app.callback(Output("scatter", "figure"), Output("selected_scatter", "figure"), Output("bar", "figure"), Input("scatter", "relayoutData"), Input("number_of_clusters", "value"))
+@app.callback(Output("selected_scatter", "figure"), Input("scatter", "relayoutData"), Input("number_of_clusters", "value"))
+def update_selected_scatter(selected_data, number_of_clusters):
+    clusters = MIN_CLUSTERS if number_of_clusters is None else number_of_clusters
+    COLORS, X, y, cluster_df, order_list = update_cluster_number(clusters)
+    if selected_data is None or (isinstance(selected_data, dict) and 'xaxis.range[0]' not in selected_data):
+        cluster_dff = cluster_df
+    else:
+        cluster_dff = cluster_df[(cluster_df['X'] >= selected_data.get('xaxis.range[0]')) &
+                                 (cluster_df['X'] <= selected_data.get('xaxis.range[1]')) &
+                                 (cluster_df['Y'] >= selected_data.get('yaxis.range[0]')) &
+                                 (cluster_df['Y'] <= selected_data.get('yaxis.range[1]'))]
+    scatter = px.scatter(cluster_dff, x="X", y="Y", color="cluster", color_discrete_map=COLORS, category_orders={"cluster": order_list}, height=750)
+    scatter.update_layout(template="plotly_white", coloraxis_showscale=False)
+    scatter.update_traces(marker=dict(size=8))
+    return scatter
+
+@app.callback(Output("scatter", "figure"), Output("bar", "figure"), Input("scatter", "relayoutData"), Input("number_of_clusters", "value"))
 def update_linked_charts(selected_data, number_of_clusters):
     clusters = MIN_CLUSTERS if number_of_clusters is None else number_of_clusters
     COLORS, X, y, cluster_df, order_list = update_cluster_number(clusters)
@@ -75,15 +91,11 @@ def update_linked_charts(selected_data, number_of_clusters):
     scatter.update_layout(template="plotly_white", coloraxis_showscale=False)
     scatter.update_traces(marker=dict(size=8))
 
-    selected_scatter = px.scatter(cluster_dff, x="X", y="Y", color="cluster", color_discrete_map=COLORS, category_orders={"cluster": order_list}, height=750)
-    selected_scatter.update_layout(template="plotly_white", coloraxis_showscale=False, title="<b>Selected Scatter Points</b>", title_font_size=25)
-    selected_scatter.update_traces(marker=dict(size=8))
-
     group_counts = cluster_dff[['cluster', 'X']].groupby('cluster').count()
 
     bar = go.Figure(data=[go.Bar(x=group_counts.index, y=group_counts['X'], marker_color= [COLORS.get(i) for i in group_counts.index])])
     bar.update_layout(height=750, template="plotly_white", title="<b>Counts per cluster</b>", xaxis_title="cluster", title_font_size= 25)
-    return scatter, selected_scatter, bar 
+    return scatter, bar 
 
 if __name__ == '__main__':
     app.run_server(debug=True, port=8012)
