@@ -112,6 +112,7 @@ def update_scatter(selected_data):
     cluster_dff = update_selected_data(selected_data=selected_data)
 
     scatter = px.scatter(cluster_dff, x="X", y="Y", color="cluster", color_discrete_map=COLORS, category_orders={"cluster": ["0", "1", "2"]})
+    scatter.update_layout(height=PLOT_HEIGHT)
     return scatter
 
 @app.callback(Output("heatmap", "figure"), Input("heatmap_nbins", "value"), Input("heatmap_color", "value"), Input("heatmap_separated", "value"), Input("scatter", "relayoutData"),)
