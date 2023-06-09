@@ -70,7 +70,7 @@ def update_selected_scatter(selected_data, number_of_clusters):
                                  (cluster_df['X'] <= selected_data.get('xaxis.range[1]')) &
                                  (cluster_df['Y'] >= selected_data.get('yaxis.range[0]')) &
                                  (cluster_df['Y'] <= selected_data.get('yaxis.range[1]'))]
-    scatter = px.scatter(cluster_dff, x="X", y="Y", color="cluster", color_discrete_map=COLORS, category_orders={"cluster": order_list}, height=750)
+    scatter = px.scatter(cluster_dff, x="X", y="Y", color="cluster", color_discrete_map=COLORS, category_orders={"cluster": order_list})
     scatter.update_layout(template="plotly_white", coloraxis_showscale=False)
     scatter.update_traces(marker=dict(size=8))
     return scatter
