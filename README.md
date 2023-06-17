@@ -1,4 +1,4 @@
-# :heart: FHGR World Happiness Dashboard :heart:
+# FHGR World Happiness Dashboard 
 
 A dashboard that uses the data from the World Happiness Report.
 The data can be found [here](https://www.kaggle.com/datasets/usamabuttar/world-happiness-report-2005-present).
@@ -9,7 +9,7 @@ The dashboard itself is programmed using the Python Programming Language and the
 - [Dash Bootstrap Components](https://dash-bootstrap-components.opensource.faculty.ai/)
 - [Pandas](https://github.com/pandas-dev/pandas)
 
-## :warning: Install required Packages :warning:
+## :warning: Install required Packages
 
 It is good practice to create a `virtual environment` first. In order to do that simply run
 
