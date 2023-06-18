@@ -1,13 +1,14 @@
-import math
-
 from dash import Dash, dcc, html, Input, Output
 import plotly.express as px
-import plotly.graph_objects as go
-import numpy as np
 import pandas as pd
 import dash_bootstrap_components as dbc
 
 INITIAL_COUNTRY_NAME = "Switzerland"
+INITIAL_FIRST_FACTOR = "Perception"
+INITIAL_SECOND_FACTOR = "Perception"
+# TODO: Use proper factors...
+AVAILABLE_FACTORS  = ["Perception", "Factor 2", "Factor 3"]
+
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.MATERIA])
 
@@ -33,7 +34,11 @@ def prepare_layout():
     world_map_section = dbc.Row([dbc.Col([world_map], width=8), dbc.Col([country_detail], width=4)], className="border rounded p-2 my-3")
 
     # Scatter Plot
-    factors = html.Div([html.H5("Choose your two factors"), html.Div(id="factors_container")])
+    first_factor_dropdown = dcc.Dropdown(options=AVAILABLE_FACTORS, id="first_factor", value=INITIAL_FIRST_FACTOR, multi=False)
+    second_factor_dropdown = dcc.Dropdown(options=AVAILABLE_FACTORS, id="second_factor", value=INITIAL_SECOND_FACTOR, multi=False)
+    first_factor_div = html.Div([dbc.Label("First Factor", html_for="first_factor"), first_factor_dropdown], className="mb-3")
+    second_factor_div = html.Div([dbc.Label("Second Factor", html_for="second_factor"), second_factor_dropdown], className="mb-3")
+    factors = dbc.Form([html.H5("Choose your two factors"), first_factor_div, second_factor_div])
     simplified_explanation = html.Div([html.H5("In a nuthsell"), html.Div(id="simplified_explanation_container")])
     scatter_plot = html.Div([html.H5("In a graph"), dcc.Graph(id="scatter_plot")])
     scatter_plot_section = dbc.Row([dbc.Col([factors], width=4), dbc.Col([simplified_explanation], width=4), dbc.Col([scatter_plot], width=4)], className="border rounded p-2 my-3")
@@ -61,13 +66,6 @@ def generate_country_detail(selected_country):
     # TODO: Display needed information such as Log GDP etc.
     overall_happiness_card = dbc.Card(dbc.CardBody([html.H6("Overall Happiness Score", className="card-title"), html.H4("8.2"), html.P("Ranked 12th in the World")]), className="my-3")
     return [overall_happiness_card, overall_happiness_card, overall_happiness_card, overall_happiness_card]
-
-@app.callback(Output("factors_container", "children"), Input("selected_country", "value"))
-def generate_factors_detail(selected_country):
-    # TODO: Display proper factors etc.
-    factors_description = [("Perception", "Subtitle"), ("Title 2", "Subtitle 2"), ("Title 2", "Subtitle 2"), ("Title 2", "Subtitle 2"), ("Title 2", "Subtitle 2")]
-    detail = [dbc.Button(f"{title} - {subtitle}", className="w-100 my-2") for title, subtitle in factors_description]
-    return detail
 
 @app.callback(Output("simplified_explanation_container", "children"), Input("selected_country", "value"))
 def generate_simplified_explanation_detail(selected_country):
