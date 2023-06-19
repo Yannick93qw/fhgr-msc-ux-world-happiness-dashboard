@@ -1,4 +1,5 @@
 from dash import Dash, dcc, html, Input, Output
+import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 import dash_bootstrap_components as dbc
@@ -6,30 +7,29 @@ import dash_bootstrap_components as dbc
 INITIAL_COUNTRY_NAME = "Switzerland"
 INITIAL_FIRST_FACTOR = "Perception"
 INITIAL_SECOND_FACTOR = "Perception"
+INITIAL_FROM_VALUE = "2008"
+
 # TODO: Use proper factors...
 AVAILABLE_FACTORS  = ["Perception", "Factor 2", "Factor 3"]
-
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.MATERIA])
 
 def get_country_names(data):
     return list(set(data["Country Name"])) 
 
-def get_country_data(data, country_name):
-    return data.get_group(country_name)
+def get_country_years(data):
+    return list(set(data["Year"])) 
 
 def prepare_dataset():
-    data = pd.read_csv("./data.csv", encoding="UTF-8")
-    country_names = get_country_names(data) 
-    grouped_data = data.groupby("Country Name")
-    return (grouped_data, country_names)
+    data = pd.read_csv("./data_cleaned.csv", encoding="UTF-8")
+    return data
 
 def prepare_layout():
     # Define basic layout
     app_header = dbc.Row([html.H1("World Happiness Dashboard")], className="border rounded p-2")
 
     # World Map
-    world_map = html.Div([html.H5("Choose your country of interest"), dcc.Graph(id="world_map")])
+    world_map = html.Div([html.H5("Life Ladder Overview for Year ...", id="world_map_title"), dcc.Graph(id="world_map")])
     country_detail = html.Div([html.H5("Information about selected country"), html.Div(id="country_detail_container")])
     world_map_section = dbc.Row([dbc.Col([world_map], width=8), dbc.Col([country_detail], width=4)], className="border rounded p-2 my-3")
 
@@ -49,16 +49,16 @@ def prepare_layout():
     # Filter
     country_dropdown = dcc.Dropdown(options=country_names, value=INITIAL_COUNTRY_NAME, id='selected_country', multi=False)
     country_div = html.Div([dbc.Label("Select country", html_for="selected_country"), country_dropdown], className="mb-3")
-    from_dropdown = dcc.Dropdown(options=[], id="from", multi=False)
+    from_dropdown = dcc.Dropdown(options=country_years, id="from", value=INITIAL_FROM_VALUE, multi=False)
     from_div = html.Div([dbc.Label("From", html_for="from"), from_dropdown], className="mb-3")
-    to_dropdown = dcc.Dropdown(options=[], id="to", multi=False)
-    to_div = html.Div([dbc.Label("To", html_for="to"), to_dropdown], className="mb-3")
-    floating_filter = dbc.Form([country_div, from_div, to_div], className="p-4 border rounded bg-light position-sticky shadow", style={"bottom": "1rem", "width": "60%", "left": "calc(50vw - 30%)"})
+    floating_filter = dbc.Form([country_div, from_div], className="p-4 border rounded bg-light position-sticky shadow", style={"bottom": "10rem", "width": "60%", "left": "calc(50vw - 30%)"})
 
     return html.Div([app_header, world_map_section, scatter_plot_section, heatmap_section, floating_filter], className="p-4")
 
 # Load Dataset and initial layout
-df, country_names = prepare_dataset()
+df = prepare_dataset()
+country_names = get_country_names(df)
+country_years = get_country_years(df)
 app.layout = prepare_layout() 
 
 @app.callback(Output("country_detail_container", "children"), Input("selected_country", "value"))
@@ -74,18 +74,31 @@ def generate_simplified_explanation_detail(selected_country):
     return [text_card, text_card]
 
 
-@app.callback(Output("world_map", "figure"), Input("selected_country", "value"))
-def update_world_map(selected_country):
-    df = px.data.election()
-    geojson = px.data.election_geojson()
-    fig = px.choropleth(df, geojson=geojson, locations="district", featureidkey="properties.district", projection="mercator", range_color=[0, 6500])
+@app.callback(Output("world_map", "figure"), Output("world_map_title", "children"), Input("from", "value"))
+def update_world_map(from_value):
+    # Implemented with reference to https://plotly.com/python/choropleth-maps/
+
+    # As we cannot display values over a period of time (e.g from 2008 to 2012 etc.) we pick the selected from value (e.g 2008)
+    dff = df.copy()
+    dff = dff[(dff["Year"] == int(from_value))]
+    locations = dff["Country Code"]
+    z  = dff["Life Ladder"]
+    text = dff["Country Name"]
+
+    fig = go.Figure(data = go.Choropleth(
+        locations = locations,
+        z = z,
+        text = text,
+        colorscale="Greens"
+    ))
     fig.update_geos(fitbounds="locations", visible=False)
-    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-    return fig
+    fig.update_layout(
+            margin={"r":0,"t":0,"l":0,"b":0},
+            geo=dict(showframe=False, projection_type="equirectangular")
+    )
 
-# TODO: Implement Updating and drawing Scatter plot
-
-
+    world_map_title = f"Life Ladder Overview for Year {from_value}"
+    return fig, world_map_title
 
 if __name__ == '__main__':
     app.run_server(debug=True, port=8014)
