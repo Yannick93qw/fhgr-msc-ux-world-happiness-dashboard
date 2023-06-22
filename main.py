@@ -18,18 +18,39 @@ def get_country_names(data):
     return list(set(data["Country Name"])) 
 
 def get_country_years(data):
-    return list(set(data["Year"])) 
+    # Because a set is not ensured to be sorted the right way we need to explicitly sort here
+    return list(sorted(set(data["Year"]))) 
 
 def prepare_dataset():
     data = pd.read_csv("./data_cleaned.csv", encoding="UTF-8")
+    # Sort descending by year (Reference: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.sort_values.html)
+    data = data.sort_values(by="Year", ascending=True)
     return data
+
+def generate_world_map():
+    # Implemented with reference to: 
+    # - https://plotly.com/python/choropleth-maps/
+    # - https://stackoverflow.com/questions/70773315/how-to-colorize-lands-which-have-missing-values-and-get-their-name-in-plotly-cho
+    # We decided not to generate data for some missing countries (like setting the value to 999) etc.
+    # As a consequence of this not all countries will be seen at every point in time (for example 2005 vs. 2022).
+
+    dff = df.copy()
+    hover_data = ["Country Name", "Life Ladder", "Year"]
+    fig = px.choropleth(dff, locations=dff["Country Code"], color="Life Ladder", color_continuous_scale=px.colors.sequential.Greens, animation_frame="Year", hover_data=hover_data)
+    fig.update_geos(fitbounds="locations", visible=False)
+    fig.update_layout(
+            margin={"r":0,"t":0,"l":0,"b":0},
+            geo=dict(showframe=False, projection_type="equirectangular")
+    )
+    return fig
 
 def prepare_layout():
     # Define basic layout
     app_header = dbc.Row([html.H1("World Happiness Dashboard")], className="border rounded p-2")
 
     # World Map
-    world_map = html.Div([html.H5("Life Ladder Overview for Year ...", id="world_map_title"), dcc.Graph(id="world_map")])
+    choropleth_map = generate_world_map()
+    world_map = html.Div([html.H5("Life Ladder Overview"), dcc.Graph(figure=choropleth_map)])
     country_detail = html.Div([html.H5("Information about selected country"), html.Div(id="country_detail_container")])
     world_map_section = dbc.Row([dbc.Col([world_map], width=8), dbc.Col([country_detail], width=4)], className="border rounded p-2 my-3")
 
@@ -72,33 +93,6 @@ def generate_simplified_explanation_detail(selected_country):
     # TODO: Display proper factors etc.
     text_card = dbc.Card(dbc.CardBody([html.H6("Some useful and helpful explanation...")]), className="p-2 my-3")
     return [text_card, text_card]
-
-
-@app.callback(Output("world_map", "figure"), Output("world_map_title", "children"), Input("from", "value"))
-def update_world_map(from_value):
-    # Implemented with reference to https://plotly.com/python/choropleth-maps/
-
-    # As we cannot display values over a period of time (e.g from 2008 to 2012 etc.) we pick the selected from value (e.g 2008)
-    dff = df.copy()
-    dff = dff[(dff["Year"] == int(from_value))]
-    locations = dff["Country Code"]
-    z  = dff["Life Ladder"]
-    text = dff["Country Name"]
-
-    fig = go.Figure(data = go.Choropleth(
-        locations = locations,
-        z = z,
-        text = text,
-        colorscale="Greens"
-    ))
-    fig.update_geos(fitbounds="locations", visible=False)
-    fig.update_layout(
-            margin={"r":0,"t":0,"l":0,"b":0},
-            geo=dict(showframe=False, projection_type="equirectangular")
-    )
-
-    world_map_title = f"Life Ladder Overview for Year {from_value}"
-    return fig, world_map_title
 
 if __name__ == '__main__':
     app.run_server(debug=True, port=8014)
