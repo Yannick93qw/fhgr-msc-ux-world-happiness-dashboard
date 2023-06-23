@@ -4,12 +4,19 @@ import pandas as pd
 import dash_bootstrap_components as dbc
 
 INITIAL_COUNTRY_NAME = "Switzerland"
-INITIAL_FIRST_FACTOR = "Perception"
-INITIAL_SECOND_FACTOR = "Perception"
 INITIAL_FROM_VALUE = "2020"
 
-# TODO: Use proper factors...
-AVAILABLE_FACTORS  = ["Perception", "Factor 2", "Factor 3"]
+# Will be displayed in the Dropdowns in a more human readable form
+FEATURES_HUMAN_READABLE = ["Life Ladder", "Log GDP", "Social Support", "Life Expectancy", "Freedom to Make Life Choices", "Generosity", "Perception of Corruption", "Positive Affect", "Negative Affect"]
+
+# Actual feature names used in the data, note that the order must be the same as the human readable definition above.
+FEATURES_IN_DATA = ["life_ladder", "log_gdp", "social_support", "life_expectancy", "freedom", "generosity", "corruption", "positive_affect", "negative_affect"]
+
+# Dictionary to quickly lookup the actual feature names for the data given a human readable feature name
+FEATURES_DICT = {feature_human_readable: feature_in_data for (feature_human_readable, feature_in_data) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)}
+
+INITIAL_FIRST_FEATURE = "Life Ladder"
+INITIAL_SECOND_FEATURE = "Generosity"
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.MATERIA])
 
@@ -25,7 +32,6 @@ def prepare_dataset():
     # Sort descending by year (Reference: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.sort_values.html)
     data = data.sort_values(by="year", ascending=True)
     return data
-
 def generate_world_map():
     # Implemented with reference to: 
     # - https://plotly.com/python/choropleth-maps/
@@ -40,7 +46,7 @@ def generate_world_map():
     fig.update_layout(
             margin={"r":0,"t":0,"l":0,"b":0},
             geo=dict(showframe=False, projection_type="equirectangular")
-    )
+            )
     return fig
 
 def prepare_layout():
@@ -57,14 +63,14 @@ def prepare_layout():
     country_detail_section = dbc.Row([dbc.Col([html.H4("General Information"), country_detail], width=12)], className="border rounded p-2 my-3")
 
     # Scatter Plot
-    first_factor_dropdown = dcc.Dropdown(options=AVAILABLE_FACTORS, id="first_factor", value=INITIAL_FIRST_FACTOR, multi=False)
-    second_factor_dropdown = dcc.Dropdown(options=AVAILABLE_FACTORS, id="second_factor", value=INITIAL_SECOND_FACTOR, multi=False)
-    first_factor_div = html.Div([dbc.Label("First Factor", html_for="first_factor"), first_factor_dropdown], className="mb-3")
-    second_factor_div = html.Div([dbc.Label("Second Factor", html_for="second_factor"), second_factor_dropdown], className="mb-3")
-    factors = dbc.Form([html.H5("Choose your two factors"), first_factor_div, second_factor_div])
+    first_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="first_feature", value=INITIAL_FIRST_FEATURE, multi=False)
+    second_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="second_feature", value=INITIAL_SECOND_FEATURE, multi=False)
+    first_feature_div = html.Div([dbc.Label("First Feature", html_for="first_feature"), first_feature_dropdown], className="mb-3")
+    second_feature_div = html.Div([dbc.Label("Second Feature", html_for="second_feature"), second_feature_dropdown], className="mb-3")
+    features = dbc.Form([html.H5("Choose your two features to compare", id="features_title"), first_feature_div, second_feature_div])
     simplified_explanation = html.Div([html.H5("In a nuthsell"), html.Div(id="simplified_explanation_container")])
     scatter_plot = html.Div([html.H5("In a graph"), dcc.Graph(id="scatter_plot")])
-    scatter_plot_section = dbc.Row([html.H4("Detail Information"), dbc.Col([factors], width=4), dbc.Col([simplified_explanation], width=4), dbc.Col([scatter_plot], width=4)], className="border rounded p-2 my-3")
+    scatter_plot_section = dbc.Row([html.H4("Detail Information"), dbc.Col([features], width=4), dbc.Col([simplified_explanation], width=4), dbc.Col([scatter_plot], width=4)], className="border rounded p-2 my-3")
 
     # Heatmap
     heatmap_section = dbc.Row([html.H4("Correlation Overview"), html.H5("Correlation Overview Title", id="correlation_overview_title"), dcc.Graph(id="heatmap")], className="border rounded p-2 my-3") 
@@ -79,18 +85,18 @@ def prepare_layout():
     # Toast container used for displaying toasts.
     toast_container = html.Div(id="toast_container")
     return html.Div([app_header, world_map_section, country_detail_section, scatter_plot_section, heatmap_section, floating_filter, toast_container], className="p-4")
-    
+
 
 def create_toast(content, header, duration=4000):
     toast = dbc.Toast(
-        [html.P(content, className="mb-0")],
-        header=header,
-        icon="primary",
-        dismissable=True,
-        duration=duration,
-        is_open=True,
-        style={"position": "fixed", "top": 66, "right": "calc(50% - 25vw)", "width": "50vw"},
-    )
+            [html.P(content, className="mb-0")],
+            header=header,
+            icon="primary",
+            dismissable=True,
+            duration=duration,
+            is_open=True,
+            style={"position": "fixed", "top": 66, "right": "calc(50% - 25vw)", "width": "50vw"},
+            )
     return toast
 
 def create_country_card(title, value, rank, total_number_of_ranks):
@@ -121,9 +127,8 @@ def generate_country_detail(selected_country, from_value):
     dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == int(from_value))]
     if dff_country.empty:
         return f"No information found for {selected_country} in Year {from_value}", []
-    
-    title_and_features = [("Life Ladder", "life_ladder"), ("Log GDP", "log_gdp"), ("Social Support", "social_support"), ("Life Expectancy", "life_expectancy"), ("Freedom to Make Life Choices", "freedom"), ("Generosity", "generosity"), ("Perceptions of Corruption", "corruption"), ("Positive Affect", "positive_affect"), ("Negative Affect", "negative_affect")]
-    country_detail = [create_country_card(title, dff_country[feature].values[0], dff_country[f"{feature}_rank"].values[0], dff_country["total_number_of_ranks"].values[0]) for (title, feature) in title_and_features]
+
+    country_detail = [create_country_card(feature_human_readable, dff_country[feature].values[0], dff_country[f"{feature}_rank"].values[0], dff_country["total_number_of_ranks"].values[0]) for (feature_human_readable, feature) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)]
     country_detail_title = f"General Information about {selected_country} for Year {from_value}"
     return country_detail_title, country_detail
 
@@ -140,12 +145,28 @@ def update_heatmap(selected_country):
     dff_country = dff[(dff["country_name"] == selected_country)]
     if dff_country.empty:
         return f"No information found for {selected_country}", None  
-    columns = ["confidence_in_government", "life_ladder"]
+    columns = FEATURES_IN_DATA
     dff_country = dff_country[columns]
     correlation = dff_country.corr(numeric_only=True)
     heatmap = px.imshow(correlation, x=columns, y=columns, aspect="auto")
     heatmap.update_xaxes(side="top")
     return f"Correlation Information about {selected_country}", heatmap
+
+@app.callback(Output("features_title", "children"), Output("scatter_plot", "figure"), Input("selected_country", "value"), Input("first_feature", "value"), Input("second_feature", "value"))
+def update_scatter_plot(selected_country, first_feature, second_feature):
+    dff = df.copy()
+    dff_country = dff[(dff["country_name"] == selected_country)]
+    if dff_country.empty:
+        return f"No information found for {selected_country}", None  
+    
+    first_feature_data = FEATURES_DICT.get(first_feature, None)
+    second_feature_data = FEATURES_DICT.get(second_feature, None)
+
+    if first_feature_data == None or second_feature_data == None:
+        return f"Please choose at least two features", None
+
+    scatter_plot = px.scatter(dff_country, x=first_feature_data, y=second_feature_data)
+    return f"Comparing {first_feature} and {second_feature} for {selected_country}", scatter_plot
 
 
 if __name__ == '__main__':
