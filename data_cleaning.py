@@ -62,10 +62,13 @@ def remove_countries(data):
         data.drop(data[data['country_name'] == country_name].index, inplace = True)
     return data
 
-def correct_country_names(data):
+def add_iso_specific_country_columns(data):
     # Make a name column for iso specific notation  based on the current country_name
     data["country_name_iso"] = data["country_name"]
     data["country_name_iso"] = data["country_name_iso"].replace(CORRECTED_COUNTRY_NAMES)
+
+    # Make a country code column for iso specific notation.
+    data["country_code_iso"] = data.apply(lambda x: get_short_country_code(x["country_name_iso"]), axis=1)
     return data
 
 def rename_columns(data):
@@ -82,17 +85,47 @@ def fill_in_missing_values(data):
     data.interpolate(method ='linear', limit_direction ='forward', inplace=True)
     return data
 
+def get_total_number_of_ranks(data, year):
+    return len(data[data["year"] == year])
+
+def calculate_country_ranking(data, country_name, year, feature):
+    # Compare all countries in the same year
+    data = data[(data["year"] == year)]
+    # Extract country name and its associated feature (e.g Life Ladder)
+    data = data[["country_name", feature]]
+    # Create a dictionary which associates a country name with the given feature (e.g <feature_value>: <country_name>)
+    feature_table = data.to_dict()["country_name"]
+    # Sort them in descending order by the feature value note that this is now a list of tuple pairs
+    result = sorted(feature_table.items(), key=lambda x:x[0], reverse=True)
+    # Now all we have to do is get the index + 1 (because 0 based)  where the country name matches and we have our ranking
+    rank = [index + 1 for (index, (feature_value, country)) in enumerate(result) if country == country_name][0]
+    # Currently this would be terrible for performance at runtime as we build up the dictionary etc. for each for. But because we pre calulate the result and simply lookup the precalculated result at runtime it is fine. 
+    return rank 
+
+def precalculate_country_ranking(data):
+    data["total_number_of_ranks"] = data.apply(lambda x: get_total_number_of_ranks(data, x["year"]), axis=1)
+    data["life_ladder_rank"] = data.apply(lambda x: calculate_country_ranking(data, x["country_name"], x["year"], "life_ladder"), axis=1)
+    data["log_gdp_rank"] = data.apply(lambda x: calculate_country_ranking(data, x["country_name"], x["year"], "log_gdp"), axis=1)
+    data["social_support_rank"] = data.apply(lambda x: calculate_country_ranking(data, x["country_name"], x["year"], "social_support"), axis=1)
+    data["life_expectancy_rank"] = data.apply(lambda x: calculate_country_ranking(data, x["country_name"], x["year"], "life_expectancy"), axis=1)
+    data["freedom_rank"] = data.apply(lambda x: calculate_country_ranking(data, x["country_name"], x["year"], "freedom"), axis=1)
+    data["generosity_rank"] = data.apply(lambda x: calculate_country_ranking(data, x["country_name"], x["year"], "generosity"), axis=1)
+    data["corruption_rank"] = data.apply(lambda x: calculate_country_ranking(data, x["country_name"], x["year"], "corruption"), axis=1)
+    data["positive_affect_rank"] = data.apply(lambda x: calculate_country_ranking(data, x["country_name"], x["year"], "positive_affect"), axis=1)
+    data["negative_affect_rank"] = data.apply(lambda x: calculate_country_ranking(data, x["country_name"], x["year"], "negative_affect"), axis=1)
+    data["confidence_in_government_rank"] = data.apply(lambda x: calculate_country_ranking(data, x["country_name"], x["year"], "confidence_in_government"), axis=1)
+    return data
+
 if __name__ == "__main__":
     df  = pd.read_csv("./data.csv", encoding="utf-8")
     df = remove_columns(df)
     df = rename_columns(df)
-    df = correct_country_names(df)
     df = remove_countries(df)
-
-    # Create a new column for the short hand country code
-    df["country_code_iso"] = df.apply(lambda x: get_short_country_code(x["country_name_iso"]), axis=1)
-    
+    df = add_iso_specific_country_columns(df)
     df = fill_in_missing_values(df)
 
-    # Write out cleaned data
-    df.to_csv("./data_cleaned.csv")
+    # Precalculate ranking for countries so that we do not have to do this at runtime...
+    df = precalculate_country_ranking(df)
+    
+    # Write out cleaned data and drop index
+    df.to_csv("./data_cleaned.csv", index=False)
