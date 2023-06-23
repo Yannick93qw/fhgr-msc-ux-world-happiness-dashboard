@@ -1,5 +1,4 @@
 from dash import Dash, dcc, html, Input, Output
-import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 import dash_bootstrap_components as dbc
@@ -7,7 +6,7 @@ import dash_bootstrap_components as dbc
 INITIAL_COUNTRY_NAME = "Switzerland"
 INITIAL_FIRST_FACTOR = "Perception"
 INITIAL_SECOND_FACTOR = "Perception"
-INITIAL_FROM_VALUE = "2008"
+INITIAL_FROM_VALUE = "2020"
 
 # TODO: Use proper factors...
 AVAILABLE_FACTORS  = ["Perception", "Factor 2", "Factor 3"]
@@ -94,6 +93,13 @@ def create_toast(content, header, duration=4000):
     )
     return toast
 
+def create_country_card(title, value, rank, total_number_of_ranks):
+    # The entire value is quite verbose. In order to improve readability we only show the value with a precision of two after the decimal point.
+    # See: https://stackoverflow.com/questions/8885663/how-to-format-a-floating-number-to-fixed-width-in-python
+    card = dbc.Card(dbc.CardBody([html.H6(title, className="card-title"), html.H4(f"{value:4.2f}"), html.P(f"Ranked {rank} out of {total_number_of_ranks} in the World")]), className="my-3")
+    return card
+
+
 # Load Dataset and initial layout
 df = prepare_dataset()
 country_names = get_country_names(df)
@@ -103,7 +109,7 @@ app.layout = prepare_layout()
 @app.callback(Output("toast_container", "children"), Input("selected_country", "value"), Input("from", "value"))
 def generate_toast_detail(selected_country, from_value):
     dff = df.copy()
-    dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == from_value)]
+    dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == int(from_value))]
     if dff_country.empty:
         toast = create_toast(f"No information found for {selected_country} in Year {from_value}", "No Results")
         return [toast]
@@ -112,13 +118,13 @@ def generate_toast_detail(selected_country, from_value):
 @app.callback(Output("country_detail_title", "children"), Output("country_detail_container", "children"), Input("selected_country", "value"), Input("from", "value"))
 def generate_country_detail(selected_country, from_value):
     dff = df.copy()
-    dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == from_value)]
+    dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == int(from_value))]
     if dff_country.empty:
         return f"No information found for {selected_country} in Year {from_value}", []
-
-    overall_happiness_card = dbc.Card(dbc.CardBody([html.H6("Overall Happiness Score", className="card-title"), html.H4("8.2"), html.P("Ranked 12th in the World")]), className="my-3")
+    
+    title_and_features = [("Life Ladder", "life_ladder"), ("Log GDP", "log_gdp"), ("Social Support", "social_support"), ("Life Expectancy", "life_expectancy"), ("Freedom to Make Life Choices", "freedom"), ("Generosity", "generosity"), ("Perceptions of Corruption", "corruption"), ("Positive Affect", "positive_affect"), ("Negative Affect", "negative_affect")]
+    country_detail = [create_country_card(title, dff_country[feature].values[0], dff_country[f"{feature}_rank"].values[0], dff_country["total_number_of_ranks"].values[0]) for (title, feature) in title_and_features]
     country_detail_title = f"General Information about {selected_country} for Year {from_value}"
-    country_detail = [overall_happiness_card, overall_happiness_card, overall_happiness_card, overall_happiness_card]
     return country_detail_title, country_detail
 
 @app.callback(Output("simplified_explanation_container", "children"), Input("selected_country", "value"))
@@ -133,7 +139,6 @@ def update_heatmap(selected_country):
     dff = df.copy()
     dff_country = dff[(dff["country_name"] == selected_country)]
     if dff_country.empty:
-        # As we have no data to shown we pass in an empty data frame
         return f"No information found for {selected_country}", None  
     columns = ["confidence_in_government", "life_ladder"]
     dff_country = dff_country[columns]

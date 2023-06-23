@@ -6,19 +6,19 @@ import pandas as pd
 import pycountry
 
 RENAMED_COLUMNS = {
-    "Country Name": "country_name",
-    "Year": "year",
-    "Life Ladder": "life_ladder",
-    "Log GDP Per Capita": "log_gdp",
-    "Social Support": "social_support",
-    "Healthy Life Expectancy At Birth": "life_expectancy",
-    "Freedom To Make Life Choices": "freedom",
-    "Generosity": "generosity",
-    "Perceptions Of Corruption": "corruption",
-    "Positive Affect": "positive_affect",
-    "Negative Affect": "negative_affect",
-    "Confidence In National Government": "confidence_in_government"
-}
+        "Country Name": "country_name",
+        "Year": "year",
+        "Life Ladder": "life_ladder",
+        "Log GDP Per Capita": "log_gdp",
+        "Social Support": "social_support",
+        "Healthy Life Expectancy At Birth": "life_expectancy",
+        "Freedom To Make Life Choices": "freedom",
+        "Generosity": "generosity",
+        "Perceptions Of Corruption": "corruption",
+        "Positive Affect": "positive_affect",
+        "Negative Affect": "negative_affect",
+        "Confidence In National Government": "confidence_in_government"
+        }
 
 REMOVED_COLUMNS = ["Regional Indicator"]
 
@@ -26,24 +26,24 @@ REMOVED_COLUMNS = ["Regional Indicator"]
 # There are some country names that pycountry is unable to resolve. Therefore we rename these countries accordingly.
 # Source: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3
 CORRECTED_COUNTRY_NAMES = {
-    "Hong Kong S.A.R. of China": "Hong Kong",
-    "Taiwan Province of China": "Taiwan, Province of China",
-    "State of Palestine": "Palestine, State of",
-    "Turkiye": "Turkey",
-    "South Korea": "Korea, Republic of",
-    "Laos": "Lao People's Democratic Republic",
-    "Moldova": "Moldova, Republic of",
-    "Syria": "Syrian Arab Republic",
-    "Tanzania": "Tanzania, United Republic of",
-    "Vietnam": "Viet Nam",
-    "Congo (Brazzaville)": "Congo",
-    "Congo (Kinshasa)": "Congo, The Democratic Republic of the",
-    "Venezuela": "Venezuela, Bolivarian Republic of",
-    "Bolivia": "Bolivia, Plurinational State of",
-    "Russia": "Russian Federation",
-    "Iran": "Iran, Islamic Republic of",
-    "Somaliland region": "Somalia"
-}
+        "Hong Kong S.A.R. of China": "Hong Kong",
+        "Taiwan Province of China": "Taiwan, Province of China",
+        "State of Palestine": "Palestine, State of",
+        "Turkiye": "Turkey",
+        "South Korea": "Korea, Republic of",
+        "Laos": "Lao People's Democratic Republic",
+        "Moldova": "Moldova, Republic of",
+        "Syria": "Syrian Arab Republic",
+        "Tanzania": "Tanzania, United Republic of",
+        "Vietnam": "Viet Nam",
+        "Congo (Brazzaville)": "Congo",
+        "Congo (Kinshasa)": "Congo, The Democratic Republic of the",
+        "Venezuela": "Venezuela, Bolivarian Republic of",
+        "Bolivia": "Bolivia, Plurinational State of",
+        "Russia": "Russian Federation",
+        "Iran": "Iran, Islamic Republic of",
+        "Somaliland region": "Somalia"
+        }
 
 # There are also some names that simply do not have a valid country code (according to wikipedia)
 REMOVED_COUNTRY_NAMES = ["Kosovo", "Ivory Coast"]
@@ -51,7 +51,7 @@ REMOVED_COUNTRY_NAMES = ["Kosovo", "Ivory Coast"]
 def get_short_country_code(country_name):
     country = pycountry.countries.get(name=country_name)
     if country == None:
-       return None 
+        return None 
     return country.alpha_3 
 
 def get_country_names(data):
@@ -93,12 +93,16 @@ def calculate_country_ranking(data, country_name, year, feature):
     data = data[(data["year"] == year)]
     # Extract country name and its associated feature (e.g Life Ladder)
     data = data[["country_name", feature]]
+
     # Create a dictionary which associates a country name with the given feature (e.g <feature_value>: <country_name>)
-    feature_table = data.to_dict()["country_name"]
+    # Implemented with reference to: https://cmdlinetips.com/2021/04/convert-two-column-values-from-pandas-dataframe-to-a-dictionary/
+    feature_table = dict(zip(data["country_name"], data[feature]))
+
     # Sort them in descending order by the feature value note that this is now a list of tuple pairs
-    result = sorted(feature_table.items(), key=lambda x:x[0], reverse=True)
+    result = sorted(feature_table.items(), key=lambda x:x[1], reverse=True)
+
     # Now all we have to do is get the index + 1 (because 0 based)  where the country name matches and we have our ranking
-    rank = [index + 1 for (index, (feature_value, country)) in enumerate(result) if country == country_name][0]
+    rank = [index + 1 for (index, (country, feature_value)) in enumerate(result) if country == country_name][0]
     # Currently this would be terrible for performance at runtime as we build up the dictionary etc. for each for. But because we pre calulate the result and simply lookup the precalculated result at runtime it is fine. 
     return rank 
 
@@ -117,15 +121,24 @@ def precalculate_country_ranking(data):
     return data
 
 if __name__ == "__main__":
+    print("Reading in data.csv...")
     df  = pd.read_csv("./data.csv", encoding="utf-8")
+    print("Removing columns...")
     df = remove_columns(df)
+    print("Renaming columns...")
     df = rename_columns(df)
+    print("Removing unneeded countries...")
     df = remove_countries(df)
+    print("Add iso specific country name...")
     df = add_iso_specific_country_columns(df)
+    print("Fill in missing values...")
     df = fill_in_missing_values(df)
 
     # Precalculate ranking for countries so that we do not have to do this at runtime...
+    print("Precalculate country rankings...")
     df = precalculate_country_ranking(df)
-    
+
     # Write out cleaned data and drop index
+    print("Writing out cleaned version...")
     df.to_csv("./data_cleaned.csv", index=False)
+    print("Done")
