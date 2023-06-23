@@ -15,16 +15,16 @@ AVAILABLE_FACTORS  = ["Perception", "Factor 2", "Factor 3"]
 app = Dash(__name__, external_stylesheets=[dbc.themes.MATERIA])
 
 def get_country_names(data):
-    return list(set(data["Country Name"])) 
+    return list(set(data["country_name"])) 
 
 def get_country_years(data):
     # Because a set is not ensured to be sorted the right way we need to explicitly sort here
-    return list(sorted(set(data["Year"]))) 
+    return list(sorted(set(data["year"]))) 
 
 def prepare_dataset():
     data = pd.read_csv("./data_cleaned.csv", encoding="UTF-8")
     # Sort descending by year (Reference: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.sort_values.html)
-    data = data.sort_values(by="Year", ascending=True)
+    data = data.sort_values(by="year", ascending=True)
     return data
 
 def generate_world_map():
@@ -35,8 +35,8 @@ def generate_world_map():
     # As a consequence of this not all countries will be seen at every point in time (for example 2005 vs. 2022).
 
     dff = df.copy()
-    hover_data = ["Country Name", "Life Ladder", "Year"]
-    fig = px.choropleth(dff, locations=dff["Country Code"], color="Life Ladder", color_continuous_scale=px.colors.sequential.Greens, animation_frame="Year", hover_data=hover_data)
+    hover_data = ["country_name", "life_ladder", "year"]
+    fig = px.choropleth(dff, locations=dff["country_code_iso"], color="life_ladder", color_continuous_scale=px.colors.sequential.Greens, animation_frame="year", hover_data=hover_data)
     fig.update_geos(fitbounds="locations", visible=False)
     fig.update_layout(
             margin={"r":0,"t":0,"l":0,"b":0},
@@ -103,7 +103,7 @@ app.layout = prepare_layout()
 @app.callback(Output("toast_container", "children"), Input("selected_country", "value"), Input("from", "value"))
 def generate_toast_detail(selected_country, from_value):
     dff = df.copy()
-    dff_country = dff[(dff["Country Name"] == selected_country) & (dff["Year"] == from_value)]
+    dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == from_value)]
     if dff_country.empty:
         toast = create_toast(f"No information found for {selected_country} in Year {from_value}", "No Results")
         return [toast]
@@ -112,7 +112,7 @@ def generate_toast_detail(selected_country, from_value):
 @app.callback(Output("country_detail_title", "children"), Output("country_detail_container", "children"), Input("selected_country", "value"), Input("from", "value"))
 def generate_country_detail(selected_country, from_value):
     dff = df.copy()
-    dff_country = dff[(dff["Country Name"] == selected_country) & (dff["Year"] == from_value)]
+    dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == from_value)]
     if dff_country.empty:
         return f"No information found for {selected_country} in Year {from_value}", []
 
@@ -131,11 +131,11 @@ def generate_simplified_explanation_detail(selected_country):
 def update_heatmap(selected_country):
     # Implemented with reference to: https://plotly.com/python/heatmaps/
     dff = df.copy()
-    dff_country = dff[(dff["Country Name"] == selected_country)]
+    dff_country = dff[(dff["country_name"] == selected_country)]
     if dff_country.empty:
         # As we have no data to shown we pass in an empty data frame
         return f"No information found for {selected_country}", None  
-    columns = ["Confidence In National Government", "Life Ladder"]
+    columns = ["confidence_in_government", "life_ladder"]
     dff_country = dff_country[columns]
     correlation = dff_country.corr(numeric_only=True)
     heatmap = px.imshow(correlation, x=columns, y=columns, aspect="auto")
