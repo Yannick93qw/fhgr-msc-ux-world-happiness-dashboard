@@ -127,17 +127,20 @@ def generate_simplified_explanation_detail(selected_country):
     text_card = dbc.Card(dbc.CardBody([html.H6("Some useful and helpful explanation...")]), className="p-2 my-3")
     return [text_card, text_card]
 
-@app.callback(Output("correlation_overview_title", "children"), Output("heatmap", "figure"), Input("selected_country", "value"), Input("from", "value"))
-def update_heatmap(selected_country, from_value):
+@app.callback(Output("correlation_overview_title", "children"), Output("heatmap", "figure"), Input("selected_country", "value"))
+def update_heatmap(selected_country):
     # Implemented with reference to: https://plotly.com/python/heatmaps/
     dff = df.copy()
-    dff_country = dff[(dff["Country Name"] == selected_country) & (dff["Year"] == from_value)]
+    dff_country = dff[(dff["Country Name"] == selected_country)]
     if dff_country.empty:
         # As we have no data to shown we pass in an empty data frame
-        return f"No information found for {selected_country} in Year {from_value}", None  
-    columns = ["Life Ladder"]
-    heatmap = px.imshow(dff_country[columns], aspect="auto")
-    return f"Correlation Information about {selected_country} for Year {from_value}", heatmap
+        return f"No information found for {selected_country}", None  
+    columns = ["Confidence In National Government", "Life Ladder"]
+    dff_country = dff_country[columns]
+    correlation = dff_country.corr(numeric_only=True)
+    heatmap = px.imshow(correlation, x=columns, y=columns, aspect="auto")
+    heatmap.update_xaxes(side="top")
+    return f"Correlation Information about {selected_country}", heatmap
 
 
 if __name__ == '__main__':
