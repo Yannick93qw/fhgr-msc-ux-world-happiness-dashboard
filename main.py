@@ -19,7 +19,7 @@ FEATURES_IN_DATA = ["life_ladder", "log_gdp", "social_support", "life_expectancy
 FEATURES_DICT = {feature_human_readable: feature_in_data for (feature_human_readable, feature_in_data) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)}
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.MATERIA])
-
+server = app.server
 
 def get_country_names(data):
     """
@@ -380,4 +380,4 @@ def update_scatter_plot(selected_country, first_feature, second_feature):
     return scatter_title, scatter_plot
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8014)
+    app.run_server()

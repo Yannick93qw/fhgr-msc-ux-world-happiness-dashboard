@@ -36,7 +36,7 @@ In order to install the required python packages simple run the following comman
 pip install -r requirements.txt
 ```
 
-## A word about data cleaning :nail_care:
+## :nail_care: A word about data cleaning 
 As mentioned above the World Happiness Report Data set was used. In order to effectively use the dataset in the dashboard a few "cleaning meassures" had to be done:
 * Remove any countries which do not have a valid ISO Country Code (the choropleth map needs valid ISO Country codes)
 * Fill in missing values via interpolation
@@ -60,5 +60,5 @@ The application can be run by typing the following command inside a terminal:
 python main.py
 ```
 
-## See it in action :rocket:
+## :rocket: See it in action 
 `TODO: Put on heroku`
