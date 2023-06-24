@@ -67,7 +67,7 @@ def prepare_layout():
     second_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="second_feature", value=INITIAL_SECOND_FEATURE, multi=False)
     first_feature_div = html.Div([dbc.Label("First Feature", html_for="first_feature"), first_feature_dropdown], className="mb-3")
     second_feature_div = html.Div([dbc.Label("Second Feature", html_for="second_feature"), second_feature_dropdown], className="mb-3")
-    features = dbc.Form([first_feature_div, second_feature_div])
+    features = dbc.Form([html.H5("Select at least two fatures"), first_feature_div, second_feature_div])
     simplified_explanation = html.Div([html.H5("In a nuthsell"), html.Div(id="simplified_explanation_container")])
     scatter_plot = html.Div([html.H5("In a graph"), dcc.Graph(id="scatter_plot")])
     scatter_plot_section = dbc.Row([html.H4("Detail Information"), html.H5("Choose your two features to compare", id="features_title"), dbc.Col([features], width=2), dbc.Col([simplified_explanation], width=2), dbc.Col([scatter_plot], width=8)], className="border rounded p-2 my-3")
@@ -102,9 +102,51 @@ def create_toast(content, header, duration=4000):
 def create_country_card(title, value, rank, total_number_of_ranks):
     # The entire value is quite verbose. In order to improve readability we only show the value with a precision of two after the decimal point.
     # See: https://stackoverflow.com/questions/8885663/how-to-format-a-floating-number-to-fixed-width-in-python
-    card = dbc.Card(dbc.CardBody([html.H6(title, className="card-title"), html.H4(f"{value:4.2f}"), html.P(f"Ranked {rank} out of {total_number_of_ranks} in the World")]), style={"width": "12rem", "height": "12rem", "float": "left", "margin": "2rem 2rem 2rem 0"})
+    card = dbc.Card(dbc.CardBody([html.H6(title, className="card-title"), html.H4(f"{value:4.2f}"), html.P([f"Ranked ", html.B(rank), f" out of {total_number_of_ranks} in the World"])]), style={"width": "12rem", "height": "12rem", "float": "left", "margin": "2rem 2rem 2rem 0"})
     return card
 
+def get_correlation_category(corr_factor):
+    # Implemented with reference to: https://medium.com/brdata/correlation-straight-to-the-point-e692ab601f4c
+    positive = corr_factor >= 0
+    abs_corr_factor = abs(corr_factor)
+
+    if abs_corr_factor <= 0.3:
+        return (positive, "negligible")
+
+    if abs_corr_factor <= 0.5:
+        return (positive, "weak")
+
+    if abs_corr_factor <= 0.7:
+        return (positive, "moderate")
+
+    if abs_corr_factor <= 0.9:
+        return (positive, "strong")
+
+    return (positive, "very strong")
+
+def get_simplified_correlation_explanation(corr_factor, first_feature, second_feature, country_name):
+    positive, corr_category = get_correlation_category(corr_factor)
+
+    if corr_category == "negligible": 
+        return f"The Correlation is negligibale. Therefore no real assumption can be made between {first_feature} and {second_feature}"
+    
+    if corr_category == "weak": 
+        return f"The Correlation is weak. Therefore no real assumption can be made between {first_feature} and {second_feature}"
+
+    if corr_category == "moderate": 
+        if positive:
+            return f"The Correlation is moderate: The higher {first_feature} the higher is {second_feature} in {country_name}"
+        return f"The Correlation is moderate: The higher {first_feature} the lower is {second_feature} in {country_name}"
+
+    if corr_category == "strong": 
+        if positive:
+            return f"The Correlation is strong: The higher {first_feature} the higher is {second_feature} in {country_name}"
+        return f"The Correlation is strong: The higher {first_feature} the lower is {second_feature} in {country_name}"
+    
+    # Very Strong Correlation 
+    if positive:
+        return f"The Correlation is very strong: The higher {first_feature} the higher is {second_feature} in {country_name}"
+    return f"The Correlation is very strong: The higher {first_feature} the lower is {second_feature} in {country_name}"
 
 # Load Dataset and initial layout
 df = prepare_dataset()
@@ -132,11 +174,46 @@ def generate_country_detail(selected_country, from_value):
     country_detail_title = f"General Information about {selected_country} for Year {from_value}"
     return country_detail_title, country_detail
 
-@app.callback(Output("simplified_explanation_container", "children"), Input("selected_country", "value"))
-def generate_simplified_explanation_detail(selected_country):
-    # TODO: Display proper factors etc.
-    text_card = dbc.Card(dbc.CardBody([html.H6("Some useful and helpful explanation...")]), className="p-2 my-3")
-    return [text_card, text_card]
+@app.callback(Output("simplified_explanation_container", "children"), Input("selected_country", "value"), Input("first_feature", "value"), Input("second_feature", "value"))
+def generate_simplified_explanation_detail(selected_country, first_feature, second_feature):
+    dff = df.copy()
+    dff_country = dff[(dff["country_name"] == selected_country)]
+    if dff_country.empty:
+        return f"No country selected"
+    
+    first_feature_data = FEATURES_DICT.get(first_feature, None)
+    second_feature_data = FEATURES_DICT.get(second_feature, None)
+
+    if first_feature_data == None or second_feature_data == None:
+        return f"Please select two features to compare"
+
+    corr_value = dff_country[first_feature_data].corr(dff_country[second_feature_data])
+    simplified_explanation = get_simplified_correlation_explanation(corr_value, first_feature, second_feature, selected_country)
+    simplified_card = dbc.Card(dbc.CardBody([html.H6(simplified_explanation)]), className="p-2 my-3")
+
+    positive, corr_category = get_correlation_category(corr_value)
+    scientific_corr_label = ""
+    match corr_category:
+        case "negligible":
+            scientific_corr_label = "Negligible Significance"
+        case "weak":
+            scientific_corr_label = "Weak Significance"
+        case "moderate":
+            scientific_corr_label = "Moderate Significance"
+        case "strong":
+           scientific_corr_label = "Strong Significance"
+        case _:
+            scientific_corr_label = "Very Strong Signifiance"
+
+    scientific_explanation = ""
+
+    if positive:
+        scientific_explanation = "A positive correlation means that if one value increases so does the other one."
+    else:
+        scientific_explanation = "A negative correlation means that if one value increases the other decreases."
+
+    scientific_card = dbc.Card(dbc.CardBody([dbc.Badge(scientific_corr_label, color="primary", className="my-2"), html.H6(f"Significance: {corr_value:4.2f}", className="card-title"), html.P(scientific_explanation)]), className="p-2 my-3")
+    return [simplified_card, scientific_card]
 
 @app.callback(Output("correlation_overview_title", "children"), Output("heatmap", "figure"), Input("selected_country", "value"))
 def update_heatmap(selected_country):
