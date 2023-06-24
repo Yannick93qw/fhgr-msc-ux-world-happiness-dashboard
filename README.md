@@ -61,4 +61,4 @@ python main.py
 ```
 
 ## :rocket: See it in action 
-`TODO: Put on heroku`
+The application is also live under the following [URL](https://fhgr-msc-world-happiness-0a5341330a12.herokuapp.com/).
