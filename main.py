@@ -3,8 +3,11 @@ import plotly.express as px
 import pandas as pd
 import dash_bootstrap_components as dbc
 
+# Initial values for dropdowns
 INITIAL_COUNTRY_NAME = "Switzerland"
 INITIAL_FROM_VALUE = "2020"
+INITIAL_FIRST_FEATURE = "Life Ladder"
+INITIAL_SECOND_FEATURE = "Generosity"
 
 # Will be displayed in the Dropdowns in a more human readable form
 FEATURES_HUMAN_READABLE = ["Life Ladder", "Log GDP", "Social Support", "Life Expectancy", "Freedom to Make Life Choices", "Generosity", "Perception of Corruption", "Positive Affect", "Negative Affect"]
@@ -15,24 +18,47 @@ FEATURES_IN_DATA = ["life_ladder", "log_gdp", "social_support", "life_expectancy
 # Dictionary to quickly lookup the actual feature names for the data given a human readable feature name
 FEATURES_DICT = {feature_human_readable: feature_in_data for (feature_human_readable, feature_in_data) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)}
 
-INITIAL_FIRST_FEATURE = "Life Ladder"
-INITIAL_SECOND_FEATURE = "Generosity"
-
 app = Dash(__name__, external_stylesheets=[dbc.themes.MATERIA])
 
+
 def get_country_names(data):
-    return list(set(data["country_name"])) 
+    """
+    Returns a unique list of country names
+        Parameters:
+            data (DataFrame): DataFrame constructed from the cleaned up version of the World Happiness Report dataset
+
+        Returns:
+            unique_country_names (list): A unique list of country names.
+    """
+    unique_country_names = list(set(data["country_name"]))
+    return unique_country_names 
 
 def get_country_years(data):
+    """
+    Returns a unique list of years 
+        Parameters:
+            data (DataFrame): DataFrame constructed from the cleaned up version of the World Happiness Report dataset
+
+        Returns:
+            unique_country_years (list): A unique list of country years.
+    """
     # Because a set is not ensured to be sorted the right way we need to explicitly sort here
-    return list(sorted(set(data["year"]))) 
+    unique_country_years = list(sorted(set(data["year"])))
+    return unique_country_years 
 
 def prepare_dataset():
+    """
+    Loads the cleaned up version of the World Happiness Report dataset and sorts the values by year in ascending order.
+    """
     data = pd.read_csv("./data_cleaned.csv", encoding="UTF-8")
     # Sort descending by year (Reference: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.sort_values.html)
     data = data.sort_values(by="year", ascending=True)
     return data
+
 def generate_world_map():
+    """
+    Generates a choropleth map in order to display the Life Ladder indicator for all countries over the entire dataset
+    """
     # Implemented with reference to: 
     # - https://plotly.com/python/choropleth-maps/
     # - https://stackoverflow.com/questions/70773315/how-to-colorize-lands-which-have-missing-values-and-get-their-name-in-plotly-cho
@@ -41,7 +67,7 @@ def generate_world_map():
 
     dff = df.copy()
     hover_data = ["country_name", "life_ladder", "year"]
-    fig = px.choropleth(dff, locations=dff["country_code_iso"], color="life_ladder", color_continuous_scale=px.colors.sequential.Greens, animation_frame="year", hover_data=hover_data)
+    fig = px.choropleth(dff, locations=dff["country_code_iso"], color="life_ladder", color_continuous_scale=px.colors.sequential.Blues, animation_frame="year", hover_data=hover_data)
     fig.update_geos(fitbounds="locations", visible=False)
     fig.update_layout(
             margin={"r":0,"t":0,"l":0,"b":0},
@@ -50,6 +76,9 @@ def generate_world_map():
     return fig
 
 def prepare_layout():
+    """
+    Sets up the layout of the dashboard
+    """
     # Header 
     app_header = dbc.Row([html.H1("World Happiness Dashboard")], className="border rounded p-2")
 
@@ -88,6 +117,17 @@ def prepare_layout():
 
 
 def create_toast(content, header, duration=4000):
+    """
+    Returns a customized bootstrap Toast
+
+        Parameters:
+            content (str): The content which should be shown inside the Toast
+            header (str): The title header of the Toast
+            duration (int): The duration for how long the toast should be shown.
+
+        Returns:
+            toast (dbc.Toast): A customized version of the bootstrap Toast
+    """
     toast = dbc.Toast(
             [html.P(content, className="mb-0")],
             header=header,
@@ -100,12 +140,34 @@ def create_toast(content, header, duration=4000):
     return toast
 
 def create_country_card(title, value, rank, total_number_of_ranks):
+    """
+    Returns a customized bootstrap Card specific for a selected country 
+
+        Parameters:
+            title (str): The title for the bootstrap card (e.g Life Ladder)
+            value (float): The value which should be shown (e.g 4.2)
+            rank (int): The rank for the country (e.g 1)
+            total_numbers_of_ranks (int): The total available number of ranks (e.g 142)
+
+        Returns:
+            card (dbc.Card): A customized bootstrap Card containing specific information about a country
+    """
     # The entire value is quite verbose. In order to improve readability we only show the value with a precision of two after the decimal point.
     # See: https://stackoverflow.com/questions/8885663/how-to-format-a-floating-number-to-fixed-width-in-python
     card = dbc.Card(dbc.CardBody([html.H6(title, className="card-title"), html.H4(f"{value:4.2f}"), html.P([f"Ranked ", html.B(rank), f" out of {total_number_of_ranks} in the World"])]), style={"width": "12rem", "height": "12rem", "float": "left", "margin": "2rem 2rem 2rem 0"})
     return card
 
 def get_correlation_category(corr_factor):
+    """
+    Returns a correlation category (negligible, weak, moderate, strong, very strong) and if it is positive or not.
+
+        Parameters:
+            corr_factor (float): The correlation value itself
+
+        Returns:
+            positive (bool): Tells if the correlation value is positive or not.
+            category (str): Tells to which category this value belongs (negligible, weak, moderate, strong, very strong)
+    """
     # Implemented with reference to: https://medium.com/brdata/correlation-straight-to-the-point-e692ab601f4c
     positive = corr_factor >= 0
     abs_corr_factor = abs(corr_factor)
@@ -125,6 +187,17 @@ def get_correlation_category(corr_factor):
     return (positive, "very strong")
 
 def get_simplified_correlation_explanation(corr_factor, first_feature, second_feature, country_name):
+    """
+    Returns a simplified more "human understandable" explanation for a correlation between two features 
+        Parameters:
+            corr_factor (float): The correlation value itself
+            first_feature (str): The first feature for the correlation
+            second_feature (str): The second feature for the correlation
+            country_name (str): The name of the country
+
+        Returns:
+            human_readable_explanation (str): A more human readable version in order to understand the correlation between two features
+    """
     positive, corr_category = get_correlation_category(corr_factor)
 
     if corr_category == "negligible": 
@@ -156,6 +229,15 @@ app.layout = prepare_layout()
 
 @app.callback(Output("toast_container", "children"), Input("selected_country", "value"), Input("from", "value"))
 def generate_toast_detail(selected_country, from_value):
+    """
+    Returns a list of Toasts which are displayed under certain condition (e.g if the user has not selected a valid country or year)
+        Parameters:
+            selected_country (str): The selected country
+            from_value (str): The year the user has selected.
+
+        Returns:
+            A list of Toasts to display in the Toast Container (e.g the top middle part of the dashboard)
+    """
     dff = df.copy()
     dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == int(from_value))]
     if dff_country.empty:
@@ -165,6 +247,16 @@ def generate_toast_detail(selected_country, from_value):
 
 @app.callback(Output("country_detail_title", "children"), Output("country_detail_container", "children"), Input("selected_country", "value"), Input("from", "value"))
 def generate_country_detail(selected_country, from_value):
+    """
+    Returns the title for the country detail as well as the actual content which should be displayed. 
+        Parameters:
+            selected_country (str): The selected country
+            from_value (str): The year the user has selected.
+
+        Returns:
+            country_detail_title (str): The title for country detail
+            country_detail (list(dbc.Cards)): A list of cards showing various detail information about the country.
+    """
     dff = df.copy()
     dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == int(from_value))]
     if dff_country.empty:
@@ -176,6 +268,17 @@ def generate_country_detail(selected_country, from_value):
 
 @app.callback(Output("simplified_explanation_container", "children"), Input("selected_country", "value"), Input("first_feature", "value"), Input("second_feature", "value"))
 def generate_simplified_explanation_detail(selected_country, first_feature, second_feature):
+    """
+    Returns the content for the simplified explanation container (which explains the correlation between two features in more simpler terms) 
+        Parameters:
+            selected_country (str): The selected country
+            first_feature (str): The first feature for comparison
+            second_feature (str): The second feature for comparison.
+
+        Returns:
+            simplified_card (dbc.Card): A card containing a more simplified explanation for a correlation between two features.
+            scientific_card (dbc.Card): A card containing a more scientific explanation for a correlation between two freatures.
+    """
     dff = df.copy()
     dff_country = dff[(dff["country_name"] == selected_country)]
     if dff_country.empty:
@@ -217,20 +320,46 @@ def generate_simplified_explanation_detail(selected_country, first_feature, seco
 
 @app.callback(Output("correlation_overview_title", "children"), Output("heatmap", "figure"), Input("selected_country", "value"))
 def update_heatmap(selected_country):
+    """
+    Returns the title displayed above the heatmap as well as the heatmap itself 
+        Parameters:
+            selected_country (str): The selected country
+
+        Returns:
+            heatmap_title (str): The title which should be shown above the heatmap.
+            heatmap (px.imshow): The actual heatmap which shows various correlations for a specific country
+    """
     # Implemented with reference to: https://plotly.com/python/heatmaps/
     dff = df.copy()
     dff_country = dff[(dff["country_name"] == selected_country)]
     if dff_country.empty:
         return f"No information found for {selected_country}", None  
-    columns = FEATURES_IN_DATA
-    dff_country = dff_country[columns]
+    columns = FEATURES_HUMAN_READABLE 
+    dff_country = dff_country[FEATURES_IN_DATA]
     correlation = dff_country.corr(numeric_only=True)
-    heatmap = px.imshow(correlation, x=columns, y=columns, aspect="auto")
+
+    # Round correlation numbers so that they do not have some many decimal places
+    # See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.round.html
+    correlation = correlation.round(2)
+
+    heatmap = px.imshow(correlation, x=columns, y=columns, aspect="auto", text_auto=True, color_continuous_scale=px.colors.sequential.Blues)
     heatmap.update_xaxes(side="top")
-    return f"Correlation Information about {selected_country}", heatmap
+    heatmap_title = f"Correlation Information about {selected_country}"
+    return heatmap_title, heatmap
 
 @app.callback(Output("features_title", "children"), Output("scatter_plot", "figure"), Input("selected_country", "value"), Input("first_feature", "value"), Input("second_feature", "value"))
 def update_scatter_plot(selected_country, first_feature, second_feature):
+    """
+    Returns the title displayed above the scatter plot as well as the scatter plot itself 
+        Parameters:
+            selected_country (str): The selected country
+            first_feature (str): The first feature for comparison 
+            second_feature (str): The second feature for comparison 
+
+        Returns:
+            scatter_title (str): The title which should be shown above the scatter plot.
+            scatter_plot (px.scatter): The scatter plot which shows the correlation between the chosen features 
+    """
     dff = df.copy()
     dff_country = dff[(dff["country_name"] == selected_country)]
     if dff_country.empty:
@@ -247,8 +376,8 @@ def update_scatter_plot(selected_country, first_feature, second_feature):
     # - https://plotly.com/python/linear-fits/
     scatter_plot = px.scatter(dff_country, x=first_feature_data, y=second_feature_data, text="year", trendline="ols")
     scatter_plot.update_traces(textposition='top center')
-    return f"Comparing {first_feature} and {second_feature} for {selected_country}", scatter_plot
-
+    scatter_title = f"Comparing {first_feature} and {second_feature} for {selected_country}"
+    return scatter_title, scatter_plot
 
 if __name__ == '__main__':
     app.run_server(debug=True, port=8014)
