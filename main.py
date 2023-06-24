@@ -102,7 +102,7 @@ def create_toast(content, header, duration=4000):
 def create_country_card(title, value, rank, total_number_of_ranks):
     # The entire value is quite verbose. In order to improve readability we only show the value with a precision of two after the decimal point.
     # See: https://stackoverflow.com/questions/8885663/how-to-format-a-floating-number-to-fixed-width-in-python
-    card = dbc.Card(dbc.CardBody([html.H6(title, className="card-title"), html.H4(f"{value:4.2f}"), html.P(f"Ranked {rank} out of {total_number_of_ranks} in the World")]), className="my-3")
+    card = dbc.Card(dbc.CardBody([html.H6(title, className="card-title"), html.H4(f"{value:4.2f}"), html.P(f"Ranked {rank} out of {total_number_of_ranks} in the World")]), style={"width": "12rem", "height": "12rem", "float": "left", "margin": "2rem 2rem 2rem 0"})
     return card
 
 
