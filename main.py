@@ -67,10 +67,10 @@ def prepare_layout():
     second_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="second_feature", value=INITIAL_SECOND_FEATURE, multi=False)
     first_feature_div = html.Div([dbc.Label("First Feature", html_for="first_feature"), first_feature_dropdown], className="mb-3")
     second_feature_div = html.Div([dbc.Label("Second Feature", html_for="second_feature"), second_feature_dropdown], className="mb-3")
-    features = dbc.Form([html.H5("Choose your two features to compare", id="features_title"), first_feature_div, second_feature_div])
+    features = dbc.Form([first_feature_div, second_feature_div])
     simplified_explanation = html.Div([html.H5("In a nuthsell"), html.Div(id="simplified_explanation_container")])
     scatter_plot = html.Div([html.H5("In a graph"), dcc.Graph(id="scatter_plot")])
-    scatter_plot_section = dbc.Row([html.H4("Detail Information"), dbc.Col([features], width=4), dbc.Col([simplified_explanation], width=4), dbc.Col([scatter_plot], width=4)], className="border rounded p-2 my-3")
+    scatter_plot_section = dbc.Row([html.H4("Detail Information"), html.H5("Choose your two features to compare", id="features_title"), dbc.Col([features], width=2), dbc.Col([simplified_explanation], width=2), dbc.Col([scatter_plot], width=8)], className="border rounded p-2 my-3")
 
     # Heatmap
     heatmap_section = dbc.Row([html.H4("Correlation Overview"), html.H5("Correlation Overview Title", id="correlation_overview_title"), dcc.Graph(id="heatmap")], className="border rounded p-2 my-3") 
@@ -165,7 +165,9 @@ def update_scatter_plot(selected_country, first_feature, second_feature):
     if first_feature_data == None or second_feature_data == None:
         return f"Please choose at least two features", None
 
-    scatter_plot = px.scatter(dff_country, x=first_feature_data, y=second_feature_data)
+    # Implemented with reference to: https://plotly.com/python/text-and-annotations/
+    scatter_plot = px.scatter(dff_country, x=first_feature_data, y=second_feature_data, text="year")
+    scatter_plot.update_traces(textposition='top center')
     return f"Comparing {first_feature} and {second_feature} for {selected_country}", scatter_plot
 
 
