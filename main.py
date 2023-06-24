@@ -19,6 +19,7 @@ FEATURES_IN_DATA = ["life_ladder", "log_gdp", "social_support", "life_expectancy
 FEATURES_DICT = {feature_human_readable: feature_in_data for (feature_human_readable, feature_in_data) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)}
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.MATERIA])
+app.title = "Msc FHGR - World Happiness Dashboard"
 server = app.server
 
 def get_country_names(data):
