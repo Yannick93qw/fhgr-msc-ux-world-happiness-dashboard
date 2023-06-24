@@ -165,8 +165,10 @@ def update_scatter_plot(selected_country, first_feature, second_feature):
     if first_feature_data == None or second_feature_data == None:
         return f"Please choose at least two features", None
 
-    # Implemented with reference to: https://plotly.com/python/text-and-annotations/
-    scatter_plot = px.scatter(dff_country, x=first_feature_data, y=second_feature_data, text="year")
+    # Implemented with reference to:
+    # - https://plotly.com/python/text-and-annotations/
+    # - https://plotly.com/python/linear-fits/
+    scatter_plot = px.scatter(dff_country, x=first_feature_data, y=second_feature_data, text="year", trendline="ols")
     scatter_plot.update_traces(textposition='top center')
     return f"Comparing {first_feature} and {second_feature} for {selected_country}", scatter_plot
 
