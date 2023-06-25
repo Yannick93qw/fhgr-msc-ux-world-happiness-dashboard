@@ -12,11 +12,29 @@ INITIAL_SECOND_FEATURE = "Generosity"
 # Will be displayed in the Dropdowns in a more human readable form
 FEATURES_HUMAN_READABLE = ["Life Ladder", "Log GDP", "Social Support", "Life Expectancy", "Freedom to Make Life Choices", "Generosity", "Perception of Corruption", "Positive Affect", "Negative Affect"]
 
+# Taken from:
+# - https://happiness-report.s3.amazonaws.com/2023/WHR+23.pdf
+# - https://worldhappiness.report/faq/#:~:text=This%20is%20called%20the%20Cantril,for%20the%20years%202020%2D2022.
+FEATURES_EXPLANATION = [
+        "Life Ladder is a ladder, with the best possible life for them being a 10 and the worst possible life being a 0.", # Life Ladder
+        "Gross Domestic Product, or how much each country produces, divided by the number of people in the country. GDP per capita gives information about the size of the economy and how the economy is performing.", # Log GDP 
+        "Social support, or having someone to count on in times of trouble. 'If you were in trouble, do you have relatives or friends you can count on to help you whenever you need them, or not?'", # Social Support
+        "More than life expectancy, how is your physical and mental health? Mental health is a key component of subjective well-being and is also a risk factor for future physical health and longevity. Mental health influences and drives a number of individual choices, behaviours,and outcomes.", #Life Expectancy
+        "'Are you satisfied or dissatisfied with your freedom to choose what you do with your life?' This also includes Human Rights. Inherent to all human beings, regardless of race, sex, nationality, ethnicity, language, religion, or any other status. Human rights include the right to life and liberty, freedom from slavery and torture, freedom of opinion and expression, the right to work and education, and many more. Everyone is entitled to these rights without discrimination.", # Freedom to Make Life Choices
+        "'Have you donated money to a charity in the past month?' A clear marker for a sense of positive community engagement and a central way that humans connect with each other. Research shows that in all cultures, starting in early childhood, people are drawn to behaviours which benefit other people.", # Generosity
+        "'Is corruption widespread throughout the government or not' and 'Is corruption widespread within businesses or not?' Do people trust their governments and have trust in the benevolence of others?", #Perception of Corruption
+        "Positive affect is given by the average of individual yes or no answers about three emotions: laughter, enjoyment, and interest", #Positive Affect
+        "Negative affect is given by the average of individual yes or no answers about three emotions: worry, sadness, and anger." # Negative Affect
+        ]
+
 # Actual feature names used in the data, note that the order must be the same as the human readable definition above.
 FEATURES_IN_DATA = ["life_ladder", "log_gdp", "social_support", "life_expectancy", "freedom", "generosity", "corruption", "positive_affect", "negative_affect"]
 
 # Dictionary to quickly lookup the actual feature names for the data given a human readable feature name
 FEATURES_DICT = {feature_human_readable: feature_in_data for (feature_human_readable, feature_in_data) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)}
+
+# Dictionary to look up explanations for various features
+FEATURES_EXPLANATION_DICT = {feature_human_readable: feature_explanation for (feature_human_readable, feature_explanation) in zip(FEATURES_HUMAN_READABLE, FEATURES_EXPLANATION)}
 
 Z_INDEX_OVERLAY = 2
 Z_INDEX_FILTER = 3
@@ -121,12 +139,12 @@ def prepare_layout():
 
     return html.Div([app_header, world_map_section, country_detail_section, scatter_plot_section, heatmap_section, floating_filter], className="p-4")
 
-def create_country_card(title, value, rank, total_number_of_ranks):
+def create_country_card(feature_human_readable, value, rank, total_number_of_ranks):
     """
     Returns a customized bootstrap Card specific for a selected country 
 
         Parameters:
-            title (str): The title for the bootstrap card (e.g Life Ladder)
+            feature_human_readable (str): The feature in human readable form (e.g Life Ladder)
             value (float): The value which should be shown (e.g 4.2)
             rank (int): The rank for the country (e.g 1)
             total_numbers_of_ranks (int): The total available number of ranks (e.g 142)
@@ -134,9 +152,11 @@ def create_country_card(title, value, rank, total_number_of_ranks):
         Returns:
             card (dbc.Card): A customized bootstrap Card containing specific information about a country
     """
-    # The entire value is quite verbose. In order to improve readability we only show the value with a precision of two after the decimal point.
+    explanation = FEATURES_EXPLANATION_DICT.get(feature_human_readable, "")
+
+    # The entire is quite verbose. In order to improve readability we only show the value with a precision of two after the decimal point.
     # See: https://stackoverflow.com/questions/8885663/how-to-format-a-floating-number-to-fixed-width-in-python
-    card = dbc.Card(dbc.CardBody([html.H6(title, className="card-title"), html.H4(f"{value:4.2f}"), html.P([f"Ranked ", html.B(rank), f" out of {total_number_of_ranks} in the World"])]), style={"width": "12rem", "height": "12rem", "float": "left", "margin": "2rem 2rem 2rem 0"})
+    card = dbc.Card(dbc.CardBody([dbc.Badge(feature_human_readable, color="primary", className="my-2"), html.P(explanation, className="card-title"), html.H4(f"{value:4.2f}"), html.P([f"Ranked ", html.B(rank), f" out of {total_number_of_ranks} in the World"])]), className="my-3")
     return card
 
 def get_correlation_category(corr_factor):
@@ -184,7 +204,7 @@ def get_simplified_correlation_explanation(corr_factor, first_feature, second_fe
 
     if corr_category == "negligible": 
         return f"The Correlation is negligibale. Therefore no real assumption can be made between {first_feature} and {second_feature}"
-    
+
     if corr_category == "weak": 
         return f"The Correlation is weak. Therefore no real assumption can be made between {first_feature} and {second_feature}"
 
@@ -197,7 +217,7 @@ def get_simplified_correlation_explanation(corr_factor, first_feature, second_fe
         if positive:
             return f"The Correlation is strong: The higher {first_feature} the higher is {second_feature} in {country_name}"
         return f"The Correlation is strong: The higher {first_feature} the lower is {second_feature} in {country_name}"
-    
+
     # Very Strong Correlation 
     if positive:
         return f"The Correlation is very strong: The higher {first_feature} the higher is {second_feature} in {country_name}"
@@ -259,7 +279,7 @@ def generate_simplified_explanation_detail(selected_country, first_feature, seco
         case "moderate":
             scientific_corr_label = "Moderate Significance"
         case "strong":
-           scientific_corr_label = "Strong Significance"
+            scientific_corr_label = "Strong Significance"
         case _:
             scientific_corr_label = "Very Strong Signifiance"
 
@@ -301,7 +321,7 @@ def update_heatmap(selected_country):
 def update_scatter_plot(selected_country, first_feature, second_feature):
     if selected_country == None:
         return "No country selected", OVERLAY_SHOWN_STYLE, "", None 
-    
+
     first_feature_data = FEATURES_DICT.get(first_feature, None)
     second_feature_data = FEATURES_DICT.get(second_feature, None)
 
