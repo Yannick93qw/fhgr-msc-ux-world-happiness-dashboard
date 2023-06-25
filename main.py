@@ -125,7 +125,7 @@ def prepare_layout():
     features = dbc.Form([first_feature_div, second_feature_div])
     simplified_explanation = html.Div([html.H5("In a nuthsell"), html.H5(id="simplified_explanation_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.Div(id="simplified_explanation_container")], className="position-relative", style={"minHeight": 250})
     scatter_plot = html.Div([html.H5("In a graph"), html.H5(id="scatter_plot_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), dcc.Graph(id="scatter_plot")], className="position-relative", style={"minHeight": 250})
-    scatter_plot_section = dbc.Row([html.H4("Detail Information"), html.H5(id="features_title"), dbc.Col([features], width=2), dbc.Col([simplified_explanation], width=2), dbc.Col([scatter_plot], width=8)], className="border rounded p-2 my-3")
+    scatter_plot_section = dbc.Row([html.H4("Detail Information"), html.H5(id="features_title"), dbc.Col([features], className="col-lg-2 col-md-12"), dbc.Col([simplified_explanation], className="col-lg-3 col-md-12"), dbc.Col([scatter_plot], className="col-lg-7 col-md-12")], className="border rounded p-2 my-3")
 
     # Heatmap
     heatmap_section = dbc.Row([html.H4("Correlation Overview"), html.H5(id="heatmap_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.H5(id="correlation_overview_title"), dcc.Graph(id="heatmap")], className="border rounded p-2 my-3 position-relative") 
@@ -135,7 +135,7 @@ def prepare_layout():
     country_div = html.Div([dbc.Label("Select country", html_for="selected_country"), country_dropdown], className="mb-3")
     from_dropdown = dcc.Dropdown(options=country_years, id="from", value=INITIAL_FROM_VALUE, multi=False)
     from_div = html.Div([dbc.Label("From", html_for="from"), from_dropdown], className="mb-3")
-    floating_filter = dbc.Form([country_div, from_div], className="p-4 border rounded bg-light position-sticky shadow", style={"bottom": "10rem", "width": "60%", "left": "calc(50vw - 30%)", "zIndex": Z_INDEX_FILTER})
+    floating_filter = dbc.Form([country_div, from_div], className="p-4 border rounded bg-light position-sticky shadow", style={"bottom": "5rem", "width": "36rem", "left": "calc(50vw - 18rem)", "zIndex": Z_INDEX_FILTER})
 
     return html.Div([app_header, world_map_section, country_detail_section, scatter_plot_section, heatmap_section, floating_filter], className="p-4")
 
