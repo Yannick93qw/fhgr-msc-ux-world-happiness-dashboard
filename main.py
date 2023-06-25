@@ -3,7 +3,7 @@ import plotly.express as px
 import pandas as pd
 import dash_bootstrap_components as dbc
 
-# Initial values for dropdowns
+# Initial values 
 INITIAL_COUNTRY_NAME = "Switzerland"
 INITIAL_FROM_VALUE = "2020"
 INITIAL_FIRST_FEATURE = "Life Ladder"
@@ -17,6 +17,13 @@ FEATURES_IN_DATA = ["life_ladder", "log_gdp", "social_support", "life_expectancy
 
 # Dictionary to quickly lookup the actual feature names for the data given a human readable feature name
 FEATURES_DICT = {feature_human_readable: feature_in_data for (feature_human_readable, feature_in_data) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)}
+
+Z_INDEX_OVERLAY = 2
+Z_INDEX_FILTER = 3
+
+# Styles which should be applied to the overlays depending if they are shown or not.
+OVERLAY_SHOWN_STYLE = {"top": "3rem", "left": 0, "bottom": 0, "width": "99%", "zIndex": Z_INDEX_OVERLAY, "display": "flex"}
+OVERLAY_HIDDEN_STYLE = {"top": "3rem", "left": 0, "bottom": 0, "width": "99%", "zIndex": Z_INDEX_OVERLAY, "display": "none"}
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.MATERIA])
 app.title = "Msc FHGR - World Happiness Dashboard"
@@ -89,56 +96,30 @@ def prepare_layout():
     world_map_section = dbc.Row([dbc.Col([world_map], width=12)], className="border rounded p-2 my-3")
 
     # Country Detail
-    country_detail = html.Div([html.H5("Country Detail Title", id="country_detail_title"), html.Div(id="country_detail_container")])
-    country_detail_section = dbc.Row([dbc.Col([html.H4("General Information"), country_detail], width=12)], className="border rounded p-2 my-3")
+    country_detail = html.Div([html.H5(id="country_detail_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.H5(id="country_detail_title"), html.Div(id="country_detail_container")])
+    country_detail_section = dbc.Row([dbc.Col([html.H4("General Information about selected country"), country_detail], width=12)], className="position-relative border rounded p-2 my-3", style={"minHeight": 250})
 
     # Scatter Plot
     first_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="first_feature", value=INITIAL_FIRST_FEATURE, multi=False)
     second_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="second_feature", value=INITIAL_SECOND_FEATURE, multi=False)
     first_feature_div = html.Div([dbc.Label("First Feature", html_for="first_feature"), first_feature_dropdown], className="mb-3")
     second_feature_div = html.Div([dbc.Label("Second Feature", html_for="second_feature"), second_feature_dropdown], className="mb-3")
-    features = dbc.Form([html.H5("Select at least two fatures"), first_feature_div, second_feature_div])
-    simplified_explanation = html.Div([html.H5("In a nuthsell"), html.Div(id="simplified_explanation_container")])
-    scatter_plot = html.Div([html.H5("In a graph"), dcc.Graph(id="scatter_plot")])
-    scatter_plot_section = dbc.Row([html.H4("Detail Information"), html.H5("Choose your two features to compare", id="features_title"), dbc.Col([features], width=2), dbc.Col([simplified_explanation], width=2), dbc.Col([scatter_plot], width=8)], className="border rounded p-2 my-3")
+    features = dbc.Form([first_feature_div, second_feature_div])
+    simplified_explanation = html.Div([html.H5("In a nuthsell"), html.H5(id="simplified_explanation_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.Div(id="simplified_explanation_container")], className="position-relative", style={"minHeight": 250})
+    scatter_plot = html.Div([html.H5("In a graph"), html.H5(id="scatter_plot_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), dcc.Graph(id="scatter_plot")], className="position-relative", style={"minHeight": 250})
+    scatter_plot_section = dbc.Row([html.H4("Detail Information"), html.H5(id="features_title"), dbc.Col([features], width=2), dbc.Col([simplified_explanation], width=2), dbc.Col([scatter_plot], width=8)], className="border rounded p-2 my-3")
 
     # Heatmap
-    heatmap_section = dbc.Row([html.H4("Correlation Overview"), html.H5("Correlation Overview Title", id="correlation_overview_title"), dcc.Graph(id="heatmap")], className="border rounded p-2 my-3") 
+    heatmap_section = dbc.Row([html.H4("Correlation Overview"), html.H5(id="heatmap_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.H5(id="correlation_overview_title"), dcc.Graph(id="heatmap")], className="border rounded p-2 my-3 position-relative") 
 
     # Filter
     country_dropdown = dcc.Dropdown(options=country_names, value=INITIAL_COUNTRY_NAME, id='selected_country', multi=False)
     country_div = html.Div([dbc.Label("Select country", html_for="selected_country"), country_dropdown], className="mb-3")
     from_dropdown = dcc.Dropdown(options=country_years, id="from", value=INITIAL_FROM_VALUE, multi=False)
     from_div = html.Div([dbc.Label("From", html_for="from"), from_dropdown], className="mb-3")
-    floating_filter = dbc.Form([country_div, from_div], className="p-4 border rounded bg-light position-sticky shadow", style={"bottom": "10rem", "width": "60%", "left": "calc(50vw - 30%)"})
+    floating_filter = dbc.Form([country_div, from_div], className="p-4 border rounded bg-light position-sticky shadow", style={"bottom": "10rem", "width": "60%", "left": "calc(50vw - 30%)", "zIndex": Z_INDEX_FILTER})
 
-    # Toast container used for displaying toasts.
-    toast_container = html.Div(id="toast_container")
-    return html.Div([app_header, world_map_section, country_detail_section, scatter_plot_section, heatmap_section, floating_filter, toast_container], className="p-4")
-
-
-def create_toast(content, header, duration=4000):
-    """
-    Returns a customized bootstrap Toast
-
-        Parameters:
-            content (str): The content which should be shown inside the Toast
-            header (str): The title header of the Toast
-            duration (int): The duration for how long the toast should be shown.
-
-        Returns:
-            toast (dbc.Toast): A customized version of the bootstrap Toast
-    """
-    toast = dbc.Toast(
-            [html.P(content, className="mb-0")],
-            header=header,
-            icon="primary",
-            dismissable=True,
-            duration=duration,
-            is_open=True,
-            style={"position": "fixed", "top": 66, "right": "calc(50% - 25vw)", "width": "50vw"},
-            )
-    return toast
+    return html.Div([app_header, world_map_section, country_detail_section, scatter_plot_section, heatmap_section, floating_filter], className="p-4")
 
 def create_country_card(title, value, rank, total_number_of_ranks):
     """
@@ -228,68 +209,41 @@ country_names = get_country_names(df)
 country_years = get_country_years(df)
 app.layout = prepare_layout()
 
-@app.callback(Output("toast_container", "children"), Input("selected_country", "value"), Input("from", "value"))
-def generate_toast_detail(selected_country, from_value):
-    """
-    Returns a list of Toasts which are displayed under certain condition (e.g if the user has not selected a valid country or year)
-        Parameters:
-            selected_country (str): The selected country
-            from_value (str): The year the user has selected.
-
-        Returns:
-            A list of Toasts to display in the Toast Container (e.g the top middle part of the dashboard)
-    """
-    dff = df.copy()
-    dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == int(from_value))]
-    if dff_country.empty:
-        toast = create_toast(f"No information found for {selected_country} in Year {from_value}", "No Results")
-        return [toast]
-    return []
-
-@app.callback(Output("country_detail_title", "children"), Output("country_detail_container", "children"), Input("selected_country", "value"), Input("from", "value"))
+@app.callback(Output("country_detail_overlay", "children"), Output("country_detail_overlay", "style"), Output("country_detail_title", "children"), Output("country_detail_container", "children"), Input("selected_country", "value"), Input("from", "value"))
 def generate_country_detail(selected_country, from_value):
-    """
-    Returns the title for the country detail as well as the actual content which should be displayed. 
-        Parameters:
-            selected_country (str): The selected country
-            from_value (str): The year the user has selected.
+    if selected_country == None and from_value == None:
+        return "No country and year selected", OVERLAY_SHOWN_STYLE, "", [] 
+    elif selected_country == None:
+        return "No country selected", OVERLAY_SHOWN_STYLE, "", [] 
+    elif from_value == None:
+        return "No year selected", OVERLAY_SHOWN_STYLE, "", [] 
 
-        Returns:
-            country_detail_title (str): The title for country detail
-            country_detail (list(dbc.Cards)): A list of cards showing various detail information about the country.
-    """
     dff = df.copy()
     dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == int(from_value))]
     if dff_country.empty:
-        return f"No information found for {selected_country} in Year {from_value}", []
+        return f"No data found for {selected_country} in Year {from_value}", OVERLAY_SHOWN_STYLE, "", [] 
 
     country_detail = [create_country_card(feature_human_readable, dff_country[feature].values[0], dff_country[f"{feature}_rank"].values[0], dff_country["total_number_of_ranks"].values[0]) for (feature_human_readable, feature) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)]
     country_detail_title = f"General Information about {selected_country} for Year {from_value}"
-    return country_detail_title, country_detail
+    return "", OVERLAY_HIDDEN_STYLE, country_detail_title, country_detail 
 
-@app.callback(Output("simplified_explanation_container", "children"), Input("selected_country", "value"), Input("first_feature", "value"), Input("second_feature", "value"))
+
+@app.callback(Output("simplified_explanation_overlay", "children"), Output("simplified_explanation_overlay", "style"), Output("simplified_explanation_container", "children"), Input("selected_country", "value"), Input("first_feature", "value"), Input("second_feature", "value"))
 def generate_simplified_explanation_detail(selected_country, first_feature, second_feature):
-    """
-    Returns the content for the simplified explanation container (which explains the correlation between two features in more simpler terms) 
-        Parameters:
-            selected_country (str): The selected country
-            first_feature (str): The first feature for comparison
-            second_feature (str): The second feature for comparison.
+    if selected_country == None:
+        return "No country selected", OVERLAY_SHOWN_STYLE, [] 
 
-        Returns:
-            simplified_card (dbc.Card): A card containing a more simplified explanation for a correlation between two features.
-            scientific_card (dbc.Card): A card containing a more scientific explanation for a correlation between two freatures.
-    """
-    dff = df.copy()
-    dff_country = dff[(dff["country_name"] == selected_country)]
-    if dff_country.empty:
-        return f"No country selected"
-    
     first_feature_data = FEATURES_DICT.get(first_feature, None)
     second_feature_data = FEATURES_DICT.get(second_feature, None)
 
     if first_feature_data == None or second_feature_data == None:
-        return f"Please select two features to compare"
+        return f"Select two features to compare", OVERLAY_SHOWN_STYLE, []
+
+    dff = df.copy()
+    dff_country = dff[(dff["country_name"] == selected_country)]
+
+    if dff_country.empty:
+        return f"No data found for {selected_country}", OVERLAY_SHOWN_STYLE, [] 
 
     corr_value = dff_country[first_feature_data].corr(dff_country[second_feature_data])
     simplified_explanation = get_simplified_correlation_explanation(corr_value, first_feature, second_feature, selected_country)
@@ -317,24 +271,19 @@ def generate_simplified_explanation_detail(selected_country, first_feature, seco
         scientific_explanation = "A negative correlation means that if one value increases the other decreases."
 
     scientific_card = dbc.Card(dbc.CardBody([dbc.Badge(scientific_corr_label, color="primary", className="my-2"), html.H6(f"Significance: {corr_value:4.2f}", className="card-title"), html.P(scientific_explanation)]), className="p-2 my-3")
-    return [simplified_card, scientific_card]
+    return "", OVERLAY_HIDDEN_STYLE, [simplified_card, scientific_card]
 
-@app.callback(Output("correlation_overview_title", "children"), Output("heatmap", "figure"), Input("selected_country", "value"))
+@app.callback(Output("heatmap_overlay", "children"), Output("heatmap_overlay", "style"), Output("correlation_overview_title", "children"), Output("heatmap", "figure"), Input("selected_country", "value"))
 def update_heatmap(selected_country):
-    """
-    Returns the title displayed above the heatmap as well as the heatmap itself 
-        Parameters:
-            selected_country (str): The selected country
-
-        Returns:
-            heatmap_title (str): The title which should be shown above the heatmap.
-            heatmap (px.imshow): The actual heatmap which shows various correlations for a specific country
-    """
     # Implemented with reference to: https://plotly.com/python/heatmaps/
+    if selected_country == None:
+        return "No country selected", OVERLAY_SHOWN_STYLE, "", None 
+
     dff = df.copy()
     dff_country = dff[(dff["country_name"] == selected_country)]
     if dff_country.empty:
-        return f"No information found for {selected_country}", None  
+        return f"No data found for {selected_country}", OVERLAY_SHOWN_STYLE, "", None 
+
     columns = FEATURES_HUMAN_READABLE 
     dff_country = dff_country[FEATURES_IN_DATA]
     correlation = dff_country.corr(numeric_only=True)
@@ -346,31 +295,23 @@ def update_heatmap(selected_country):
     heatmap = px.imshow(correlation, x=columns, y=columns, aspect="auto", text_auto=True, color_continuous_scale=px.colors.sequential.Blues)
     heatmap.update_xaxes(side="top")
     heatmap_title = f"Correlation Information about {selected_country}"
-    return heatmap_title, heatmap
+    return "", OVERLAY_HIDDEN_STYLE, heatmap_title, heatmap 
 
-@app.callback(Output("features_title", "children"), Output("scatter_plot", "figure"), Input("selected_country", "value"), Input("first_feature", "value"), Input("second_feature", "value"))
+@app.callback(Output("scatter_plot_overlay", "children"), Output("scatter_plot_overlay", "style"), Output("features_title", "children"), Output("scatter_plot", "figure"), Input("selected_country", "value"), Input("first_feature", "value"), Input("second_feature", "value"))
 def update_scatter_plot(selected_country, first_feature, second_feature):
-    """
-    Returns the title displayed above the scatter plot as well as the scatter plot itself 
-        Parameters:
-            selected_country (str): The selected country
-            first_feature (str): The first feature for comparison 
-            second_feature (str): The second feature for comparison 
-
-        Returns:
-            scatter_title (str): The title which should be shown above the scatter plot.
-            scatter_plot (px.scatter): The scatter plot which shows the correlation between the chosen features 
-    """
-    dff = df.copy()
-    dff_country = dff[(dff["country_name"] == selected_country)]
-    if dff_country.empty:
-        return f"No information found for {selected_country}", None  
+    if selected_country == None:
+        return "No country selected", OVERLAY_SHOWN_STYLE, "", None 
     
     first_feature_data = FEATURES_DICT.get(first_feature, None)
     second_feature_data = FEATURES_DICT.get(second_feature, None)
 
     if first_feature_data == None or second_feature_data == None:
-        return f"Please choose at least two features", None
+        return f"Please choose at least two features", OVERLAY_SHOWN_STYLE, "", None
+
+    dff = df.copy()
+    dff_country = dff[(dff["country_name"] == selected_country)]
+    if dff_country.empty:
+        return f"No data found for {selected_country}", OVERLAY_SHOWN_STYLE, "", None 
 
     # Implemented with reference to:
     # - https://plotly.com/python/text-and-annotations/
@@ -378,7 +319,7 @@ def update_scatter_plot(selected_country, first_feature, second_feature):
     scatter_plot = px.scatter(dff_country, x=first_feature_data, y=second_feature_data, text="year", trendline="ols")
     scatter_plot.update_traces(textposition='top center')
     scatter_title = f"Comparing {first_feature} and {second_feature} for {selected_country}"
-    return scatter_title, scatter_plot
+    return "", OVERLAY_HIDDEN_STYLE, scatter_title, scatter_plot
 
 if __name__ == '__main__':
-    app.run_server()
+    app.run_server(debug=True)
