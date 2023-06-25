@@ -96,8 +96,9 @@ def generate_world_map():
     fig = px.choropleth(dff, locations=dff["country_code_iso"], color="life_ladder", color_continuous_scale=px.colors.sequential.Blues, animation_frame="year", hover_data=hover_data)
     fig.update_geos(fitbounds="locations", visible=False)
     fig.update_layout(
+            height=450,
             margin={"r":0,"t":0,"l":0,"b":0},
-            geo=dict(showframe=False, projection_type="equirectangular")
+            geo=dict(showframe=False, projection_type="natural earth")
             )
     return fig
 
@@ -297,12 +298,12 @@ def generate_simplified_explanation_detail(selected_country, first_feature, seco
 def update_heatmap(selected_country):
     # Implemented with reference to: https://plotly.com/python/heatmaps/
     if selected_country == None:
-        return "No country selected", OVERLAY_SHOWN_STYLE, "", None 
+        return "No country selected", OVERLAY_SHOWN_STYLE, "", px.imshow(pd.DataFrame()) 
 
     dff = df.copy()
     dff_country = dff[(dff["country_name"] == selected_country)]
     if dff_country.empty:
-        return f"No data found for {selected_country}", OVERLAY_SHOWN_STYLE, "", None 
+        return f"No data found for {selected_country}", OVERLAY_SHOWN_STYLE, "", px.imshow(pd.DataFrame()) 
 
     columns = FEATURES_HUMAN_READABLE 
     dff_country = dff_country[FEATURES_IN_DATA]
@@ -320,18 +321,18 @@ def update_heatmap(selected_country):
 @app.callback(Output("scatter_plot_overlay", "children"), Output("scatter_plot_overlay", "style"), Output("features_title", "children"), Output("scatter_plot", "figure"), Input("selected_country", "value"), Input("first_feature", "value"), Input("second_feature", "value"))
 def update_scatter_plot(selected_country, first_feature, second_feature):
     if selected_country == None:
-        return "No country selected", OVERLAY_SHOWN_STYLE, "", None 
+        return "No country selected", OVERLAY_SHOWN_STYLE, "", px.scatter() 
 
     first_feature_data = FEATURES_DICT.get(first_feature, None)
     second_feature_data = FEATURES_DICT.get(second_feature, None)
 
     if first_feature_data == None or second_feature_data == None:
-        return f"Please choose at least two features", OVERLAY_SHOWN_STYLE, "", None
+        return f"Please choose at least two features", OVERLAY_SHOWN_STYLE, "", px.scatter() 
 
     dff = df.copy()
     dff_country = dff[(dff["country_name"] == selected_country)]
     if dff_country.empty:
-        return f"No data found for {selected_country}", OVERLAY_SHOWN_STYLE, "", None 
+        return f"No data found for {selected_country}", OVERLAY_SHOWN_STYLE, "", px.scatter() 
 
     # Implemented with reference to:
     # - https://plotly.com/python/text-and-annotations/
