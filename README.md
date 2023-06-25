@@ -61,4 +61,5 @@ python main.py
 ```
 
 ## :rocket: See it in action 
-The application is also live under the following [URL](https://fhgr-msc-world-happiness-0a5341330a12.herokuapp.com/).
+The application is also live on Heroku under the following [URL](https://fhgr-msc-world-happiness-0a5341330a12.herokuapp.com/).
+This was accomplished with this wonderful guide [here](https://towardsdatascience.com/deploying-your-dash-app-to-heroku-the-magical-guide-39bd6a0c586c).
