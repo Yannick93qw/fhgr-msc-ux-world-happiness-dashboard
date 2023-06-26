@@ -40,12 +40,44 @@ Z_INDEX_OVERLAY = 2
 Z_INDEX_FILTER = 3
 
 # Styles which should be applied to the overlays depending if they are shown or not.
-OVERLAY_SHOWN_STYLE = {"top": "3rem", "left": 0, "bottom": 0, "width": "99%", "zIndex": Z_INDEX_OVERLAY, "display": "flex"}
-OVERLAY_HIDDEN_STYLE = {"top": "3rem", "left": 0, "bottom": 0, "width": "99%", "zIndex": Z_INDEX_OVERLAY, "display": "none"}
+OVERLAY_SHOWN_STYLE = {"top": 0, "left": 0, "bottom": 0, "width": "99%", "zIndex": Z_INDEX_OVERLAY, "display": "flex"}
+OVERLAY_HIDDEN_STYLE = {"top": 0, "left": 0, "bottom": 0, "width": "99%", "zIndex": Z_INDEX_OVERLAY, "display": "none"}
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.MATERIA])
 app.title = "Msc FHGR - World Happiness Dashboard"
 server = app.server
+
+
+def get_ranking_explanation(feature_human_readable):
+    """
+    Returns an explanation of how to interpret a certain ranking
+
+    Parameters:
+            feature_human_readable (str): The feature for which the ranking should be explained (e.g Life Ladder) 
+        Returns:
+            An explanation if a lower or higher ranking is better.
+    """
+    match feature_human_readable:
+        case "Life Ladder":
+            return "Higher is better"
+        case "Log GDP":
+            return "Higher is better"
+        case "Social Support":
+            return "Higher is better"
+        case "Life Expectancy":
+            return "Higher is better"
+        case "Freedom to Make Life Choices":
+            return "Higher is better"
+        case "Generosity":
+            return "Higher is better"
+        case "Positive Affect":
+            return "Higher is better"
+        case "Perception of Corruption":
+            return "Lower is better"
+        case "Negative Affect":
+            return "Lower is better"
+        case _:
+            return ""
 
 def get_country_names(data):
     """
@@ -115,8 +147,8 @@ def prepare_layout():
     world_map_section = dbc.Row([dbc.Col([world_map], width=12)], className="border rounded p-2 my-3")
 
     # Country Detail
-    country_detail = html.Div([html.H5(id="country_detail_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.H5(id="country_detail_title"), html.Div(id="country_detail_container")])
-    country_detail_section = dbc.Row([dbc.Col([html.H4("General Information about selected country"), country_detail], width=12)], className="position-relative border rounded p-2 my-3", style={"minHeight": 250})
+    country_detail = html.Div([html.H5(id="country_detail_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.Div(id="country_detail_container")])
+    country_detail_section = dbc.Row([dbc.Col([html.H4(id="country_detail_title"), country_detail], width=12)], className="position-relative border rounded p-2 my-3", style={"minHeight": 250})
 
     # Scatter Plot
     first_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="first_feature", value=INITIAL_FIRST_FEATURE, multi=False)
@@ -126,10 +158,10 @@ def prepare_layout():
     features = dbc.Form([first_feature_div, second_feature_div])
     simplified_explanation = html.Div([html.H5("In a nuthsell"), html.H5(id="simplified_explanation_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.Div(id="simplified_explanation_container")], className="position-relative", style={"minHeight": 250})
     scatter_plot = html.Div([html.H5("In a graph"), html.H5(id="scatter_plot_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), dcc.Graph(id="scatter_plot")], className="position-relative", style={"minHeight": 250})
-    scatter_plot_section = dbc.Row([html.H4("Detail Information"), html.H5(id="features_title"), dbc.Col([features], className="col-lg-2 col-md-12"), dbc.Col([simplified_explanation], className="col-lg-3 col-md-12"), dbc.Col([scatter_plot], className="col-lg-7 col-md-12")], className="border rounded p-2 my-3")
+    scatter_plot_section = dbc.Row([html.H4(id="features_title"), dbc.Col([features], className="col-lg-2 col-md-12"), dbc.Col([simplified_explanation], className="col-lg-3 col-md-12"), dbc.Col([scatter_plot], className="col-lg-7 col-md-12")], className="border rounded p-2 my-3")
 
     # Heatmap
-    heatmap_section = dbc.Row([html.H4("Correlation Overview"), html.H5(id="heatmap_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.H5(id="correlation_overview_title"), dcc.Graph(id="heatmap")], className="border rounded p-2 my-3 position-relative") 
+    heatmap_section = dbc.Row([html.H4(id="correlation_overview_title"), html.H5(id="heatmap_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), dcc.Graph(id="heatmap")], className="border rounded p-2 my-3 position-relative") 
 
     # Filter
     country_dropdown = dcc.Dropdown(options=country_names, value=INITIAL_COUNTRY_NAME, id='selected_country', multi=False)
@@ -153,11 +185,12 @@ def create_country_card(feature_human_readable, value, rank, total_number_of_ran
         Returns:
             card (dbc.Card): A customized bootstrap Card containing specific information about a country
     """
-    explanation = FEATURES_EXPLANATION_DICT.get(feature_human_readable, "")
-
-    # The entire is quite verbose. In order to improve readability we only show the value with a precision of two after the decimal point.
+    feature_explanation = FEATURES_EXPLANATION_DICT.get(feature_human_readable, "")
+    ranking_explanation = get_ranking_explanation(feature_human_readable)
+    
+    # The entire value is quite verbose. In order to improve readability we only show the value with a precision of two after the decimal point.
     # See: https://stackoverflow.com/questions/8885663/how-to-format-a-floating-number-to-fixed-width-in-python
-    card = dbc.Card(dbc.CardBody([dbc.Badge(feature_human_readable, color="primary", className="my-2"), html.P(explanation, className="card-title"), html.H4(f"{value:4.2f}"), html.P([f"Ranked ", html.B(rank), f" out of {total_number_of_ranks} in the World"])]), className="my-3")
+    card = dbc.Card(dbc.CardBody([html.H5(feature_human_readable, className="card-title"), html.P(ranking_explanation, className="card-subtitle mb-2 text-muted"), html.P(feature_explanation), html.H3(dbc.Badge(f"Ranked {rank} out of {total_number_of_ranks} in the World", color="primary", className="p-2")), html.B(f"Value: {value:4.2f}")]), className="my-3")
     return card
 
 def get_correlation_category(corr_factor):
