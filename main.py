@@ -53,7 +53,7 @@ def get_ranking_explanation(feature_human_readable):
     Returns an explanation of how to interpret a certain ranking
 
     Parameters:
-            feature_human_readable (str): The feature for which the ranking should be explained (e.g Life Ladder) 
+        feature_human_readable (str): The feature for which the ranking should be explained (e.g Life Ladder) 
         Returns:
             An explanation if a lower or higher ranking is better.
     """
@@ -143,7 +143,7 @@ def prepare_layout():
 
     # World Map
     choropleth_map = generate_world_map()
-    world_map = html.Div([html.H4("Life Ladder Overview"), dcc.Graph(figure=choropleth_map)])
+    world_map = html.Div([html.H4("Life Ladder Overview"), dcc.Graph(figure=choropleth_map, id="world_map")])
     world_map_section = dbc.Row([dbc.Col([world_map], width=12)], className="border rounded p-2 my-3")
 
     # Country Detail
@@ -168,29 +168,44 @@ def prepare_layout():
     country_div = html.Div([dbc.Label("Select country", html_for="selected_country"), country_dropdown], className="mb-3")
     from_dropdown = dcc.Dropdown(options=country_years, id="from", value=INITIAL_FROM_VALUE, multi=False)
     from_div = html.Div([dbc.Label("From", html_for="from"), from_dropdown], className="mb-3")
-    floating_filter = dbc.Form([country_div, from_div], className="p-4 border rounded bg-light position-sticky shadow", style={"bottom": "5rem", "width": "36rem", "left": "calc(50vw - 18rem)", "zIndex": Z_INDEX_FILTER})
+    floating_filter = dbc.Form([country_div, from_div], className="p-4 border rounded bg-light position-sticky shadow", style={"bottom": "11rem", "width": "36rem", "left": "calc(50vw - 18rem)", "zIndex": Z_INDEX_FILTER})
 
     return html.Div([app_header, world_map_section, country_detail_section, scatter_plot_section, heatmap_section, floating_filter], className="p-4")
 
-def create_country_card(feature_human_readable, value, rank, total_number_of_ranks):
+def create_country_card(feature_human_readable, feature, df_country, df_data, year):
     """
     Returns a customized bootstrap Card specific for a selected country 
 
         Parameters:
             feature_human_readable (str): The feature in human readable form (e.g Life Ladder)
-            value (float): The value which should be shown (e.g 4.2)
-            rank (int): The rank for the country (e.g 1)
-            total_numbers_of_ranks (int): The total available number of ranks (e.g 142)
+            feature (str): The feature in the data set (e.g life_ladder)
+            df_country (pd.DataFrame): The dataframe for the specific country
+            df_data (pd.DataFrame): The entire dataframe for all countries 
+            year (int): The specified year
 
         Returns:
             card (dbc.Card): A customized bootstrap Card containing specific information about a country
     """
     feature_explanation = FEATURES_EXPLANATION_DICT.get(feature_human_readable, "")
     ranking_explanation = get_ranking_explanation(feature_human_readable)
-    
+    rank = df_country[f"{feature}_rank"].values[0] 
+    total_number_of_ranks = df_country["total_number_of_ranks"].values[0]
+    value = df_country[feature].values[0]
+
+    # Create a bar chart showing the top ranking countries for a specific feature (e.g Life Ladder)
+
+    # First get all data in the same year
+    df_same_year = df_data[df_data["year"] == year]
+
+    # Then sort by the desired feature rank (e.g life ladder rank) and take the first 10.
+    df_same_year = df_same_year.sort_values(by=f"{feature}_rank")
+    df_top_10 = df_same_year.head(10)
+    bar_chart = dcc.Graph(figure=px.bar(df_top_10, x="country_name", y=feature))
+    bar_chart_title = f"Top 10 Countries in {feature_human_readable} for Year {year}"
+
     # The entire value is quite verbose. In order to improve readability we only show the value with a precision of two after the decimal point.
     # See: https://stackoverflow.com/questions/8885663/how-to-format-a-floating-number-to-fixed-width-in-python
-    card = dbc.Card(dbc.CardBody([html.H5(feature_human_readable, className="card-title"), html.P(ranking_explanation, className="card-subtitle mb-2 text-muted"), html.P(feature_explanation), html.H3(dbc.Badge(f"Ranked {rank} out of {total_number_of_ranks} in the World", color="primary", className="p-2")), html.B(f"Value: {value:4.2f}")]), className="my-3")
+    card = dbc.Card(dbc.CardBody([html.H5(feature_human_readable, className="card-title"), html.P(ranking_explanation, className="card-subtitle mb-2 text-muted"), html.P(feature_explanation), html.H3(dbc.Badge(f"Ranked {rank} out of {total_number_of_ranks} in the World", color="primary", className="p-2")), html.B(f"Value: {value:4.2f}"), html.H6(bar_chart_title, className="my-3"), bar_chart]), className="my-3")
     return card
 
 def get_correlation_category(corr_factor):
@@ -263,6 +278,15 @@ country_names = get_country_names(df)
 country_years = get_country_years(df)
 app.layout = prepare_layout()
 
+@app.callback(Output("selected_country", "value"), Input("world_map", "clickData"))
+def update_selected_country(world_map_click_data):
+    if world_map_click_data == None:
+        return INITIAL_COUNTRY_NAME
+
+    # It is possible to get the clicked country viy the clickData Property. However it is quite deeply nested
+    clicked_country = world_map_click_data["points"][0]["customdata"][0]
+    return clicked_country
+
 @app.callback(Output("country_detail_overlay", "children"), Output("country_detail_overlay", "style"), Output("country_detail_title", "children"), Output("country_detail_container", "children"), Input("selected_country", "value"), Input("from", "value"))
 def generate_country_detail(selected_country, from_value):
     if selected_country == None and from_value == None:
@@ -277,7 +301,7 @@ def generate_country_detail(selected_country, from_value):
     if dff_country.empty:
         return f"No data found for {selected_country} in Year {from_value}", OVERLAY_SHOWN_STYLE, "", [] 
 
-    country_detail = [create_country_card(feature_human_readable, dff_country[feature].values[0], dff_country[f"{feature}_rank"].values[0], dff_country["total_number_of_ranks"].values[0]) for (feature_human_readable, feature) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)]
+    country_detail = [create_country_card(feature_human_readable, feature, dff_country, dff, int(from_value)) for (feature_human_readable, feature) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)]
     country_detail_title = f"General Information about {selected_country} for Year {from_value}"
     return "", OVERLAY_HIDDEN_STYLE, country_detail_title, country_detail 
 
