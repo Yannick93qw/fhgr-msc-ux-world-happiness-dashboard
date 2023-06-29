@@ -36,6 +36,13 @@ In order to install the required python packages simple run the following comman
 pip install -r requirements.txt
 ```
 
+Note that in order to use the Jupyter Notebooks located in `jupyter-notebook` please make sure you separately install the package with:
+```bash
+pip install notebook
+```
+
+I did not include this in the requirements file as this would make the Heroku image unnecessarily large. Furthermore Jupyter Notebook is not required in order to run the Dashboard itself.
+
 ## :nail_care: A word about data cleaning 
 As mentioned above the World Happiness Report Data set was used. In order to effectively use the dataset in the dashboard a few "cleaning meassures" had to be done:
 * Remove any countries which do not have a valid ISO Country Code (the choropleth map needs valid ISO Country codes)
