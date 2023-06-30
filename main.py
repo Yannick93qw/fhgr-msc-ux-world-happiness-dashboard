@@ -171,6 +171,9 @@ def prepare_layout():
     country_detail_section = html.Div([html.H4(id="country_detail_title"), country_detail])
     world_map_section = dbc.Row([dbc.Col([world_map], className="col-md-8 col-sm-12"), dbc.Col([country_detail_section], className="col-md-4 col-sm-12")], className="my-2")
 
+    # Parallel Coordinate System
+    parallel_coordinate_system_section = dbc.Row([html.H4(id="parallel_coordinate_system_title"), html.Div([html.H5(id="parallel_coordinate_system_overlay", className="justify-content-center align-items-center position-absolute bg-white"), dcc.Graph(id="parallel_coordinate_system")], className="position-relative", style={"minHeight": 250})])
+
     # Top 5 countries bar chart
     top_5_countries_detail = html.Div([html.H5(id="top_5_countries_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), dcc.Graph(id="top_5_countries_bar_chart")], className="position-relative", style={"minHeight": 250}) 
     top_5_countries_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="top_5_countries_feature", value=INITIAL_FIRST_FEATURE, multi=False)
@@ -196,9 +199,9 @@ def prepare_layout():
     from_div = html.Div([dbc.Label("From", html_for="from"), from_dropdown], className="mb-3")
     floating_filter = dbc.Form([country_div, from_div], className="p-4 border rounded bg-light position-sticky shadow", style={"bottom": "11rem", "width": "36rem", "left": "calc(50vw - 18rem)", "zIndex": Z_INDEX_FILTER})
 
-    return html.Div([app_header, world_map_section, top_5_countries_section, scatter_plot_section, heatmap_section, floating_filter], className="p-4")
+    return html.Div([app_header, world_map_section, parallel_coordinate_system_section, top_5_countries_section, scatter_plot_section, heatmap_section, floating_filter], className="p-4")
 
-def create_country_card(feature_human_readable, feature, df_country, df_data, year):
+def generate_country_card(feature_human_readable, feature, df_country):
     """
     Returns a customized bootstrap Card specific for a selected country 
 
@@ -206,8 +209,6 @@ def create_country_card(feature_human_readable, feature, df_country, df_data, ye
             feature_human_readable (str): The feature in human readable form (e.g Life Ladder)
             feature (str): The feature in the data set (e.g life_ladder)
             df_country (pd.DataFrame): The dataframe for the specific country
-            df_data (pd.DataFrame): The entire dataframe for all countries 
-            year (int): The specified year
 
         Returns:
             card (dbc.Card): A customized bootstrap Card containing specific information about a country
@@ -293,7 +294,7 @@ country_years = get_country_years(df)
 app.layout = prepare_layout()
 
 @app.callback(Output("country_detail_overlay", "children"), Output("country_detail_overlay", "style"), Output("country_detail_title", "children"), Output("country_detail_container", "children"), Input("selected_country", "value"), Input("from", "value"))
-def generate_country_detail(selected_country, from_value):
+def update_country_detail(selected_country, from_value):
     country_detail_title = "General Information"
     if selected_country == None and from_value == None:
         return "No country and year selected", OVERLAY_SHOWN_STYLE, country_detail_title, [] 
@@ -307,7 +308,7 @@ def generate_country_detail(selected_country, from_value):
     if dff_country.empty:
         return f"No data found for {selected_country} in Year {from_value}", OVERLAY_SHOWN_STYLE, country_detail_title, [] 
 
-    country_detail = [create_country_card(feature_human_readable, feature, dff_country, dff, int(from_value)) for (feature_human_readable, feature) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)]
+    country_detail = [generate_country_card(feature_human_readable, feature, dff_country) for (feature_human_readable, feature) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)]
     country_detail_title = f"General Information about {selected_country} for Year {from_value}"
     return "", OVERLAY_HIDDEN_STYLE, country_detail_title, country_detail 
 
@@ -334,8 +335,22 @@ def update_top_5_countries(from_value, feature):
     dff_top_5 = dff.head(5)
     return title, "", OVERLAY_HIDDEN_STYLE, px.bar(dff_top_5, x=feature_data, y="country_name", orientation="h")
 
+@app.callback(Output("parallel_coordinate_system_title", "children"), Output("parallel_coordinate_system_overlay", "children"), Output("parallel_coordinate_system_overlay", "style"), Output("parallel_coordinate_system", "figure"), Input("from", "value"))
+def update_parallel_coordinate_system(from_value):
+    # Implemented with reference to: https://plotly.com/python/parallel-coordinates-plot/
+    title = f"Compare Countries"
+    if from_value == None:
+        return title, f"No Year selected", OVERLAY_SHOWN_STYLE, px.parallel_coordinates(pd.DataFrame())
+    dff = df.copy()
+    dff = dff[dff["year"] == int(from_value)]
+    title =  f"Compare Countries in Year {from_value}"
+    dimensions = FEATURES_IN_DATA
+    parallel_coordinates = px.parallel_coordinates(dff, dimensions=dimensions, color_continuous_scale=px.colors.sequential.Sunset)
+    
+    return title, "", OVERLAY_HIDDEN_STYLE, parallel_coordinates
+
 @app.callback(Output("simplified_explanation_overlay", "children"), Output("simplified_explanation_overlay", "style"), Output("simplified_explanation_container", "children"), Input("selected_country", "value"), Input("first_feature", "value"), Input("second_feature", "value"))
-def generate_simplified_explanation_detail(selected_country, first_feature, second_feature):
+def udpate_simplified_explanation_detail(selected_country, first_feature, second_feature):
     if selected_country == None:
         return "No country selected", OVERLAY_SHOWN_STYLE, [] 
 
