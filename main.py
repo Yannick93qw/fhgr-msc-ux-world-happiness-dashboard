@@ -1,5 +1,4 @@
 from dash import Dash, dcc, html, Input, Output
-from pandas.plotting import parallel_coordinates
 import plotly.express as px
 import pandas as pd
 import dash_bootstrap_components as dbc
@@ -174,7 +173,7 @@ def prepare_layout():
     choropleth_map = generate_world_map()
     world_map = html.Div([html.H4("Life Ladder Overview"), dcc.Graph(figure=choropleth_map)])
     country_detail = html.Div([html.H5(id="country_detail_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.Div(id="country_detail_container", style={"maxHeight": HEIGHT_CHOROPLETH_MAP, "overflowY": "auto"})], className="position-relative", style={"minHeight": HEIGHT_CHOROPLETH_MAP})
-    
+
     country_detail_section = html.Div([html.H4(id="country_detail_title"), country_detail])
     world_map_section = dbc.Row([dbc.Col([world_map], className="col-md-8 col-sm-12"), dbc.Col([country_detail_section], className="col-md-4 col-sm-12")], className="my-2")
 
@@ -325,7 +324,7 @@ def update_top_5_countries(from_value, feature):
     title = "Top 5 Countries"
     if from_value == None:
         return title, f"No Year selected", OVERLAY_SHOWN_STYLE,  px.bar()
-    
+
     feature_data = FEATURES_DICT.get(feature, None)
 
     if feature_data == None:
@@ -358,7 +357,7 @@ def update_parallel_coordinate_system(from_value, features_human_readable):
     title =  f"Compare Features across all Countries in Year {from_value}"
     dimensions = [FEATURES_DICT.get(feature_human_readable, "") for feature_human_readable in features_human_readable]
     parallel_coordinates = px.parallel_coordinates(dff, color="life_ladder", dimensions=dimensions, color_continuous_scale=px.colors.sequential.Blues, labels=FEATURES_LABELS)
-    
+
     return title, "", OVERLAY_HIDDEN_STYLE, parallel_coordinates
 
 @app.callback(Output("simplified_explanation_overlay", "children"), Output("simplified_explanation_overlay", "style"), Output("simplified_explanation_container", "children"), Input("selected_country", "value"), Input("first_feature", "value"), Input("second_feature", "value"))
@@ -377,7 +376,7 @@ def udpate_simplified_explanation_detail(selected_country, first_feature, second
 
     if dff_country.empty:
         return f"No data found for {selected_country}", OVERLAY_SHOWN_STYLE, [] 
-    
+
     # There are some countries like Maldives which only have one single value.
     # A correlation based on a single value is not really possible...
     if len(dff_country.index) <= 1:
