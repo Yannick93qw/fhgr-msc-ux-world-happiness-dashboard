@@ -40,6 +40,12 @@ FEATURES_IN_DATA = ["life_ladder", "log_gdp", "social_support", "life_expectancy
 # Dictionary to quickly lookup the actual feature names for the data given a human readable feature name
 FEATURES_DICT = {feature_human_readable: feature_in_data for (feature_human_readable, feature_in_data) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)}
 
+# Dictionary to define labels for axis etc.
+FEATURES_LABELS= {feature_in_data: feature_human_readable for (feature_human_readable, feature_in_data) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)}
+# Add an aditional entry for country_name
+FEATURES_LABELS["country_name"] = "Country Name"
+
+
 # Dictionary to look up explanations for various features
 FEATURES_EXPLANATION_DICT = {feature_human_readable: feature_explanation for (feature_human_readable, feature_explanation) in zip(FEATURES_HUMAN_READABLE, FEATURES_EXPLANATION)}
 
@@ -334,13 +340,12 @@ def update_top_5_countries(from_value, feature):
     # Then sort by the desired feature (e.g life ladder) first 5.
     dff = dff.sort_values(by=feature_data, ascending=False)
     dff_top_5 = dff.head(5)
-    return title, "", OVERLAY_HIDDEN_STYLE, px.bar(dff_top_5, x=feature_data, y="country_name", orientation="h")
+    return title, "", OVERLAY_HIDDEN_STYLE, px.bar(dff_top_5, x=feature_data, y="country_name", orientation="h", labels=FEATURES_LABELS)
 
 @app.callback(Output("parallel_coordinate_system_title", "children"), Output("parallel_coordinate_system_overlay", "children"), Output("parallel_coordinate_system_overlay", "style"), Output("parallel_coordinate_system", "figure"), Input("from", "value"), Input("parallel_coordinate_system_features", "value"))
 def update_parallel_coordinate_system(from_value, features_human_readable):
     # Implemented with reference to: https://plotly.com/python/parallel-coordinates-plot/
     title = f"Compare Features across all Countries"
-    print(features_human_readable)
 
     if from_value == None:
         return title, f"No Year selected", OVERLAY_SHOWN_STYLE, px.parallel_coordinates(pd.DataFrame())
@@ -352,7 +357,7 @@ def update_parallel_coordinate_system(from_value, features_human_readable):
     dff = dff[dff["year"] == int(from_value)]
     title =  f"Compare Features across all Countries in Year {from_value}"
     dimensions = [FEATURES_DICT.get(feature_human_readable, "") for feature_human_readable in features_human_readable]
-    parallel_coordinates = px.parallel_coordinates(dff, color="life_ladder", dimensions=dimensions, color_continuous_scale=px.colors.sequential.Blues)
+    parallel_coordinates = px.parallel_coordinates(dff, color="life_ladder", dimensions=dimensions, color_continuous_scale=px.colors.sequential.Blues, labels=FEATURES_LABELS)
     
     return title, "", OVERLAY_HIDDEN_STYLE, parallel_coordinates
 
@@ -431,7 +436,7 @@ def update_heatmap(selected_country):
     # See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.round.html
     correlation = correlation.round(2)
 
-    heatmap = px.imshow(correlation, x=columns, y=columns, aspect="auto", text_auto=True, color_continuous_scale=px.colors.sequential.Blues)
+    heatmap = px.imshow(correlation, x=columns, y=columns, aspect="auto", text_auto=True, color_continuous_scale=px.colors.sequential.Blues, labels=FEATURES_LABELS)
     heatmap.update_xaxes(side="top")
     heatmap_title = f"Correlation Information about {selected_country}"
     return "", OVERLAY_HIDDEN_STYLE, heatmap_title, heatmap 
@@ -456,7 +461,7 @@ def update_scatter_plot(selected_country, first_feature, second_feature):
     # Implemented with reference to:
     # - https://plotly.com/python/text-and-annotations/
     # - https://plotly.com/python/linear-fits/
-    scatter_plot = px.scatter(dff_country, x=first_feature_data, y=second_feature_data, text="year", trendline="ols")
+    scatter_plot = px.scatter(dff_country, x=first_feature_data, y=second_feature_data, text="year", trendline="ols", labels=FEATURES_LABELS)
     scatter_plot.update_traces(textposition='top center')
     scatter_title = f"Comparing {first_feature} and {second_feature} for {selected_country}"
     return "", OVERLAY_HIDDEN_STYLE, scatter_title, scatter_plot
