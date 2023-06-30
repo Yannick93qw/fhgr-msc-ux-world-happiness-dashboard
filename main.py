@@ -163,12 +163,12 @@ def prepare_layout():
     # Header 
     app_header = dbc.Row([html.H1("World Happiness Dashboard")], className="my-2")
 
-    # World Map and associted Country Detail information
+    # World Map and associated Country Detail information
     choropleth_map = generate_world_map()
     world_map = html.Div([html.H4("Life Ladder Overview"), dcc.Graph(figure=choropleth_map)])
-    country_detail = html.Div([html.H5(id="country_detail_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.Div(id="country_detail_container", style={"maxHeight": HEIGHT_CHOROPLETH_MAP, "overflowY": "auto"})])
+    country_detail = html.Div([html.H5(id="country_detail_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.Div(id="country_detail_container", style={"maxHeight": HEIGHT_CHOROPLETH_MAP, "overflowY": "auto"})], className="position-relative", style={"minHeight": HEIGHT_CHOROPLETH_MAP})
     
-    country_detail_section = html.Div([html.H4(id="country_detail_title"), country_detail], className="position-relative my-2", style={"minHeight": 250})
+    country_detail_section = html.Div([html.H4(id="country_detail_title"), country_detail])
     world_map_section = dbc.Row([dbc.Col([world_map], className="col-md-8 col-sm-12"), dbc.Col([country_detail_section], className="col-md-4 col-sm-12")], className="my-2")
 
     # Top 5 countries bar chart
@@ -176,7 +176,7 @@ def prepare_layout():
     top_5_countries_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="top_5_countries_feature", value=INITIAL_FIRST_FEATURE, multi=False)
     top_5_countries_section = html.Div([html.H4(id="top_5_countries_title"), dbc.Form([dbc.Label("Select a Feature", html_for="top_5_countries_feature"), top_5_countries_feature_dropdown]), top_5_countries_detail])
 
-    # Scatter Plot
+    # Scatter Plot and in a nutshell explanations
     first_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="first_feature", value=INITIAL_FIRST_FEATURE, multi=False)
     second_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="second_feature", value=INITIAL_SECOND_FEATURE, multi=False)
     first_feature_div = html.Div([dbc.Label("First Feature", html_for="first_feature"), first_feature_dropdown], className="mb-3")
@@ -187,7 +187,7 @@ def prepare_layout():
     scatter_plot_section = dbc.Row([html.H4(id="features_title"), dbc.Col([features], className="col-lg-2 col-md-12"), dbc.Col([simplified_explanation], className="col-lg-3 col-md-12"), dbc.Col([scatter_plot], className="col-lg-7 col-md-12")], className="my-2")
 
     # Heatmap
-    heatmap_section = dbc.Row([html.H4(id="correlation_overview_title"), html.H5(id="heatmap_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), dcc.Graph(id="heatmap")], className="my-2 position-relative") 
+    heatmap_section = dbc.Row([html.H4(id="correlation_overview_title"), html.Div([html.H5(id="heatmap_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), dcc.Graph(id="heatmap")], className="my-2 position-relative")]) 
 
     # Filter
     country_dropdown = dcc.Dropdown(options=country_names, value=INITIAL_COUNTRY_NAME, id='selected_country', multi=False)
@@ -263,7 +263,7 @@ def get_simplified_correlation_explanation(corr_factor, first_feature, second_fe
         Returns:
             human_readable_explanation (str): A more human readable version in order to understand the correlation between two features
     """
-    positive, corr_category = get_correlation_category(corr_factor)
+    is_positive, corr_category = get_correlation_category(corr_factor)
 
     if corr_category == "negligible": 
         return f"The Correlation is negligibale. Therefore no real assumption can be made between {first_feature} and {second_feature}"
@@ -272,17 +272,17 @@ def get_simplified_correlation_explanation(corr_factor, first_feature, second_fe
         return f"The Correlation is weak. Therefore no real assumption can be made between {first_feature} and {second_feature}"
 
     if corr_category == "moderate": 
-        if positive:
+        if is_positive:
             return f"The Correlation is moderate: The higher {first_feature} the higher is {second_feature} in {country_name}"
         return f"The Correlation is moderate: The higher {first_feature} the lower is {second_feature} in {country_name}"
 
     if corr_category == "strong": 
-        if positive:
+        if is_positive:
             return f"The Correlation is strong: The higher {first_feature} the higher is {second_feature} in {country_name}"
         return f"The Correlation is strong: The higher {first_feature} the lower is {second_feature} in {country_name}"
 
     # Very Strong Correlation 
-    if positive:
+    if is_positive:
         return f"The Correlation is very strong: The higher {first_feature} the higher is {second_feature} in {country_name}"
     return f"The Correlation is very strong: The higher {first_feature} the lower is {second_feature} in {country_name}"
 
@@ -294,17 +294,18 @@ app.layout = prepare_layout()
 
 @app.callback(Output("country_detail_overlay", "children"), Output("country_detail_overlay", "style"), Output("country_detail_title", "children"), Output("country_detail_container", "children"), Input("selected_country", "value"), Input("from", "value"))
 def generate_country_detail(selected_country, from_value):
+    country_detail_title = "General Information"
     if selected_country == None and from_value == None:
-        return "No country and year selected", OVERLAY_SHOWN_STYLE, "", [] 
+        return "No country and year selected", OVERLAY_SHOWN_STYLE, country_detail_title, [] 
     elif selected_country == None:
-        return "No country selected", OVERLAY_SHOWN_STYLE, "", [] 
+        return "No country selected", OVERLAY_SHOWN_STYLE, country_detail_title, [] 
     elif from_value == None:
-        return "No year selected", OVERLAY_SHOWN_STYLE, "", [] 
+        return "No year selected", OVERLAY_SHOWN_STYLE, country_detail_title, [] 
 
     dff = df.copy()
     dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == int(from_value))]
     if dff_country.empty:
-        return f"No data found for {selected_country} in Year {from_value}", OVERLAY_SHOWN_STYLE, "", [] 
+        return f"No data found for {selected_country} in Year {from_value}", OVERLAY_SHOWN_STYLE, country_detail_title, [] 
 
     country_detail = [create_country_card(feature_human_readable, feature, dff_country, dff, int(from_value)) for (feature_human_readable, feature) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)]
     country_detail_title = f"General Information about {selected_country} for Year {from_value}"
@@ -313,13 +314,14 @@ def generate_country_detail(selected_country, from_value):
 
 @app.callback(Output("top_5_countries_title", "children"), Output("top_5_countries_overlay", "children"), Output("top_5_countries_overlay", "style"), Output("top_5_countries_bar_chart", "figure"), Input("from", "value"), Input("top_5_countries_feature", "value"))
 def update_top_5_countries(from_value, feature):
+    title = "Top 5 Countries"
     if from_value == None:
-        return "Top 5 Countries", f"No Year selected", OVERLAY_SHOWN_STYLE,  px.bar()
+        return title, f"No Year selected", OVERLAY_SHOWN_STYLE,  px.bar()
     
     feature_data = FEATURES_DICT.get(feature, None)
 
     if feature_data == None:
-        return "Top 5 Countries", "Please select a feature", OVERLAY_SHOWN_STYLE, px.bar()
+        return title, "Please select a feature", OVERLAY_SHOWN_STYLE, px.bar()
 
     title = f"Top 5 Countries for {feature} in Year {from_value}"
     dff = df.copy()
@@ -348,6 +350,11 @@ def generate_simplified_explanation_detail(selected_country, first_feature, seco
 
     if dff_country.empty:
         return f"No data found for {selected_country}", OVERLAY_SHOWN_STYLE, [] 
+    
+    # There are some countries like Maldives which only have one single value.
+    # A correlation based on a single value is not really possible...
+    if len(dff_country.index) <= 1:
+        return f"Insufficient number of data in order to caluclate a meaningful correlation", OVERLAY_SHOWN_STYLE, []
 
     corr_value = dff_country[first_feature_data].corr(dff_country[second_feature_data])
     simplified_explanation = get_simplified_correlation_explanation(corr_value, first_feature, second_feature, selected_country)
@@ -380,17 +387,23 @@ def generate_simplified_explanation_detail(selected_country, first_feature, seco
 @app.callback(Output("heatmap_overlay", "children"), Output("heatmap_overlay", "style"), Output("correlation_overview_title", "children"), Output("heatmap", "figure"), Input("selected_country", "value"))
 def update_heatmap(selected_country):
     # Implemented with reference to: https://plotly.com/python/heatmaps/
+    heatmap_title = "Correlation Information"
     if selected_country == None:
-        return "No country selected", OVERLAY_SHOWN_STYLE, "", px.imshow(pd.DataFrame()) 
+        return "No country selected", OVERLAY_SHOWN_STYLE, heatmap_title, px.imshow(pd.DataFrame()) 
 
     dff = df.copy()
     dff_country = dff[(dff["country_name"] == selected_country)]
     if dff_country.empty:
-        return f"No data found for {selected_country}", OVERLAY_SHOWN_STYLE, "", px.imshow(pd.DataFrame()) 
+        return f"No data found for {selected_country}", OVERLAY_SHOWN_STYLE, heatmap_title, px.imshow(pd.DataFrame()) 
 
     columns = FEATURES_HUMAN_READABLE 
     dff_country = dff_country[FEATURES_IN_DATA]
     correlation = dff_country.corr(numeric_only=True)
+
+    # There are some countries like Maldives which only have one single value.
+    # A correlation based on a single value is not really possible...
+    if len(dff_country.index) <= 1:
+        return f"Insufficient number of data in order to caluclate a meaningful correlation", OVERLAY_SHOWN_STYLE, heatmap_title, px.imshow(pd.DataFrame())
 
     # Round correlation numbers so that they do not have some many decimal places
     # See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.round.html
@@ -403,19 +416,20 @@ def update_heatmap(selected_country):
 
 @app.callback(Output("scatter_plot_overlay", "children"), Output("scatter_plot_overlay", "style"), Output("features_title", "children"), Output("scatter_plot", "figure"), Input("selected_country", "value"), Input("first_feature", "value"), Input("second_feature", "value"))
 def update_scatter_plot(selected_country, first_feature, second_feature):
+    scatter_title = f"Comparing Features"
     if selected_country == None:
-        return "No country selected", OVERLAY_SHOWN_STYLE, "", px.scatter() 
+        return "No country selected", OVERLAY_SHOWN_STYLE, scatter_title, px.scatter() 
 
     first_feature_data = FEATURES_DICT.get(first_feature, None)
     second_feature_data = FEATURES_DICT.get(second_feature, None)
 
     if first_feature_data == None or second_feature_data == None:
-        return f"Please choose at least two features", OVERLAY_SHOWN_STYLE, "", px.scatter() 
+        return f"Please choose at least two features", OVERLAY_SHOWN_STYLE, scatter_title, px.scatter() 
 
     dff = df.copy()
     dff_country = dff[(dff["country_name"] == selected_country)]
     if dff_country.empty:
-        return f"No data found for {selected_country}", OVERLAY_SHOWN_STYLE, "", px.scatter() 
+        return f"No data found for {selected_country}", OVERLAY_SHOWN_STYLE, scatter_title, px.scatter() 
 
     # Implemented with reference to:
     # - https://plotly.com/python/text-and-annotations/
