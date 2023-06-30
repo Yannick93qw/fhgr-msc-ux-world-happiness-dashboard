@@ -228,7 +228,7 @@ def generate_country_card(feature_human_readable, feature, df_country):
 
     # The entire value is quite verbose. In order to improve readability we only show the value with a precision of two after the decimal point.
     # See: https://stackoverflow.com/questions/8885663/how-to-format-a-floating-number-to-fixed-width-in-python
-    card = dbc.Card(dbc.CardBody([html.H5(feature_human_readable, className="card-title"), html.P(ranking_explanation, className="card-subtitle mb-2 text-muted"), html.P(feature_explanation), html.H3(dbc.Badge(f"Ranked {rank}", color="primary", className="p-2")), html.B(f"Value: {value:4.2f}")]), className="my-2")
+    card = dbc.Card(dbc.CardBody([html.H5(feature_human_readable, className="card-title"), html.P(ranking_explanation, className="card-subtitle mb-2 text-muted"), html.P(feature_explanation), html.H3(dbc.Badge(f"Ranked {rank}", color="primary", className="p-2")), html.P(f"out of {total_number_of_ranks}", className="text-muted"), html.B(f"Value: {value:4.2f}")]), className="my-2")
     return card
 
 def get_correlation_category(corr_factor):
