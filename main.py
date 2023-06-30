@@ -2,12 +2,16 @@ from dash import Dash, dcc, html, Input, Output
 import plotly.express as px
 import pandas as pd
 import dash_bootstrap_components as dbc
+import json
 
 # Initial values 
 INITIAL_COUNTRY_NAME = "Switzerland"
 INITIAL_FROM_VALUE = "2020"
 INITIAL_FIRST_FEATURE = "Life Ladder"
 INITIAL_SECOND_FEATURE = "Generosity"
+
+# Initial centered country on the mapbox based choropleth map (Switzerland)
+INITIAL_CENTERED_COUNTRY = {"lat": 46.8182, "lon": 8.2275}
 
 # Will be displayed in the Dropdowns in a more human readable form
 FEATURES_HUMAN_READABLE = ["Life Ladder", "Log GDP", "Social Support", "Life Expectancy", "Freedom to Make Life Choices", "Generosity", "Perception of Corruption", "Positive Affect", "Negative Affect"]
@@ -43,7 +47,7 @@ Z_INDEX_FILTER = 3
 OVERLAY_SHOWN_STYLE = {"top": 0, "left": 0, "bottom": 0, "width": "99%", "zIndex": Z_INDEX_OVERLAY, "display": "flex"}
 OVERLAY_HIDDEN_STYLE = {"top": 0, "left": 0, "bottom": 0, "width": "99%", "zIndex": Z_INDEX_OVERLAY, "display": "none"}
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.MATERIA])
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "Msc FHGR - World Happiness Dashboard"
 server = app.server
 
@@ -120,18 +124,34 @@ def generate_world_map():
     # Implemented with reference to: 
     # - https://plotly.com/python/choropleth-maps/
     # - https://stackoverflow.com/questions/70773315/how-to-colorize-lands-which-have-missing-values-and-get-their-name-in-plotly-cho
-    # We decided not to generate data for some missing countries (like setting the value to 999) etc.
-    # As a consequence of this not all countries will be seen at every point in time (for example 2005 vs. 2022).
-
+    # - https://towardsdatascience.com/how-to-create-outstanding-custom-choropleth-maps-with-plotly-and-dash-49ac918a5f05
     dff = df.copy()
-    hover_data = ["country_name", "life_ladder", "year"]
-    fig = px.choropleth(dff, locations=dff["country_code_iso"], color="life_ladder", color_continuous_scale=px.colors.sequential.Blues, animation_frame="year", hover_data=hover_data)
-    fig.update_geos(fitbounds="locations", visible=False)
+
+    # Geojson was generated with: https://geojson-maps.ash.ms/
+    with open("./custom.geo.json") as f:
+        geo_world = json.load(f)
+
+    hover_data = {"country_name": True, "life_ladder": True, "year": True, "country_code_iso": False}
+
+    # We need to map a property inside the geojson to the actual iso code of our country.
+    # Luckily this can easiliy by done via featureidkey, see "Indexing by GeoJSON Properties" https://plotly.com/python/mapbox-county-choropleth/
+    fig = px.choropleth_mapbox(
+            dff,
+            geojson=geo_world,
+            featureidkey="properties.iso_a3",
+            mapbox_style="open-street-map", 
+            locations="country_code_iso",
+            color="life_ladder",
+            center=INITIAL_CENTERED_COUNTRY,
+            animation_frame="year",
+            hover_name="country_name",
+            hover_data=hover_data,
+            color_continuous_scale=px.colors.sequential.Sunset,
+            zoom=5)
     fig.update_layout(
-            height=450,
+            height=960,
             margin={"r":0,"t":0,"l":0,"b":0},
-            geo=dict(showframe=False, projection_type="natural earth")
-            )
+            geo=dict(showframe=False))
     return fig
 
 def prepare_layout():
@@ -143,7 +163,7 @@ def prepare_layout():
 
     # World Map
     choropleth_map = generate_world_map()
-    world_map = html.Div([html.H4("Life Ladder Overview"), dcc.Graph(figure=choropleth_map, id="world_map")])
+    world_map = html.Div([html.H4("Life Ladder Overview"), dcc.Graph(figure=choropleth_map)])
     world_map_section = dbc.Row([dbc.Col([world_map], width=12)], className="border rounded p-2 my-3")
 
     # Country Detail
@@ -277,15 +297,6 @@ df = prepare_dataset()
 country_names = get_country_names(df)
 country_years = get_country_years(df)
 app.layout = prepare_layout()
-
-@app.callback(Output("selected_country", "value"), Input("world_map", "clickData"))
-def update_selected_country(world_map_click_data):
-    if world_map_click_data == None:
-        return INITIAL_COUNTRY_NAME
-
-    # It is possible to get the clicked country viy the clickData Property. However it is quite deeply nested
-    clicked_country = world_map_click_data["points"][0]["customdata"][0]
-    return clicked_country
 
 @app.callback(Output("country_detail_overlay", "children"), Output("country_detail_overlay", "style"), Output("country_detail_title", "children"), Output("country_detail_container", "children"), Input("selected_country", "value"), Input("from", "value"))
 def generate_country_detail(selected_country, from_value):
