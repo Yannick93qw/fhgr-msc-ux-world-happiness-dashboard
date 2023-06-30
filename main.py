@@ -13,6 +13,8 @@ INITIAL_SECOND_FEATURE = "Generosity"
 # Initial centered country on the mapbox based choropleth map (Switzerland)
 INITIAL_CENTERED_COUNTRY = {"lat": 46.8182, "lon": 8.2275}
 
+HEIGHT_CHOROPLETH_MAP = 950
+
 # Will be displayed in the Dropdowns in a more human readable form
 FEATURES_HUMAN_READABLE = ["Life Ladder", "Log GDP", "Social Support", "Life Expectancy", "Freedom to Make Life Choices", "Generosity", "Perception of Corruption", "Positive Affect", "Negative Affect"]
 
@@ -149,7 +151,7 @@ def generate_world_map():
             color_continuous_scale=px.colors.sequential.Sunset,
             zoom=5)
     fig.update_layout(
-            height=960,
+            height=HEIGHT_CHOROPLETH_MAP,
             margin={"r":0,"t":0,"l":0,"b":0},
             geo=dict(showframe=False))
     return fig
@@ -159,29 +161,33 @@ def prepare_layout():
     Sets up the layout of the dashboard
     """
     # Header 
-    app_header = dbc.Row([html.H1("World Happiness Dashboard")], className="border rounded p-2")
+    app_header = dbc.Row([html.H1("World Happiness Dashboard")], className="my-2")
 
-    # World Map
+    # World Map and associted Country Detail information
     choropleth_map = generate_world_map()
     world_map = html.Div([html.H4("Life Ladder Overview"), dcc.Graph(figure=choropleth_map)])
-    world_map_section = dbc.Row([dbc.Col([world_map], width=12)], className="border rounded p-2 my-3")
+    country_detail = html.Div([html.H5(id="country_detail_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.Div(id="country_detail_container", style={"maxHeight": HEIGHT_CHOROPLETH_MAP, "overflowY": "auto"})])
+    
+    country_detail_section = html.Div([html.H4(id="country_detail_title"), country_detail], className="position-relative my-2", style={"minHeight": 250})
+    world_map_section = dbc.Row([dbc.Col([world_map], className="col-md-8 col-sm-12"), dbc.Col([country_detail_section], className="col-md-4 col-sm-12")], className="my-2")
 
-    # Country Detail
-    country_detail = html.Div([html.H5(id="country_detail_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.Div(id="country_detail_container")])
-    country_detail_section = dbc.Row([dbc.Col([html.H4(id="country_detail_title"), country_detail], width=12)], className="position-relative border rounded p-2 my-3", style={"minHeight": 250})
+    # Top 5 countries bar chart
+    top_5_countries_detail = html.Div([html.H5(id="top_5_countries_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), dcc.Graph(id="top_5_countries_bar_chart")], className="position-relative", style={"minHeight": 250}) 
+    top_5_countries_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="top_5_countries_feature", value=INITIAL_FIRST_FEATURE, multi=False)
+    top_5_countries_section = html.Div([html.H4(id="top_5_countries_title"), dbc.Form([dbc.Label("Select a Feature", html_for="top_5_countries_feature"), top_5_countries_feature_dropdown]), top_5_countries_detail])
 
     # Scatter Plot
     first_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="first_feature", value=INITIAL_FIRST_FEATURE, multi=False)
     second_feature_dropdown = dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="second_feature", value=INITIAL_SECOND_FEATURE, multi=False)
     first_feature_div = html.Div([dbc.Label("First Feature", html_for="first_feature"), first_feature_dropdown], className="mb-3")
     second_feature_div = html.Div([dbc.Label("Second Feature", html_for="second_feature"), second_feature_dropdown], className="mb-3")
-    features = dbc.Form([first_feature_div, second_feature_div])
+    features = dbc.Form([html.H5("Select two features"), first_feature_div, second_feature_div])
     simplified_explanation = html.Div([html.H5("In a nuthsell"), html.H5(id="simplified_explanation_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), html.Div(id="simplified_explanation_container")], className="position-relative", style={"minHeight": 250})
     scatter_plot = html.Div([html.H5("In a graph"), html.H5(id="scatter_plot_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), dcc.Graph(id="scatter_plot")], className="position-relative", style={"minHeight": 250})
-    scatter_plot_section = dbc.Row([html.H4(id="features_title"), dbc.Col([features], className="col-lg-2 col-md-12"), dbc.Col([simplified_explanation], className="col-lg-3 col-md-12"), dbc.Col([scatter_plot], className="col-lg-7 col-md-12")], className="border rounded p-2 my-3")
+    scatter_plot_section = dbc.Row([html.H4(id="features_title"), dbc.Col([features], className="col-lg-2 col-md-12"), dbc.Col([simplified_explanation], className="col-lg-3 col-md-12"), dbc.Col([scatter_plot], className="col-lg-7 col-md-12")], className="my-2")
 
     # Heatmap
-    heatmap_section = dbc.Row([html.H4(id="correlation_overview_title"), html.H5(id="heatmap_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), dcc.Graph(id="heatmap")], className="border rounded p-2 my-3 position-relative") 
+    heatmap_section = dbc.Row([html.H4(id="correlation_overview_title"), html.H5(id="heatmap_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), dcc.Graph(id="heatmap")], className="my-2 position-relative") 
 
     # Filter
     country_dropdown = dcc.Dropdown(options=country_names, value=INITIAL_COUNTRY_NAME, id='selected_country', multi=False)
@@ -190,7 +196,7 @@ def prepare_layout():
     from_div = html.Div([dbc.Label("From", html_for="from"), from_dropdown], className="mb-3")
     floating_filter = dbc.Form([country_div, from_div], className="p-4 border rounded bg-light position-sticky shadow", style={"bottom": "11rem", "width": "36rem", "left": "calc(50vw - 18rem)", "zIndex": Z_INDEX_FILTER})
 
-    return html.Div([app_header, world_map_section, country_detail_section, scatter_plot_section, heatmap_section, floating_filter], className="p-4")
+    return html.Div([app_header, world_map_section, top_5_countries_section, scatter_plot_section, heatmap_section, floating_filter], className="p-4")
 
 def create_country_card(feature_human_readable, feature, df_country, df_data, year):
     """
@@ -212,20 +218,9 @@ def create_country_card(feature_human_readable, feature, df_country, df_data, ye
     total_number_of_ranks = df_country["total_number_of_ranks"].values[0]
     value = df_country[feature].values[0]
 
-    # Create a bar chart showing the top ranking countries for a specific feature (e.g Life Ladder)
-
-    # First get all data in the same year
-    df_same_year = df_data[df_data["year"] == year]
-
-    # Then sort by the desired feature rank (e.g life ladder rank) and take the first 10.
-    df_same_year = df_same_year.sort_values(by=f"{feature}_rank")
-    df_top_10 = df_same_year.head(10)
-    bar_chart = dcc.Graph(figure=px.bar(df_top_10, x="country_name", y=feature))
-    bar_chart_title = f"Top 10 Countries in {feature_human_readable} for Year {year}"
-
     # The entire value is quite verbose. In order to improve readability we only show the value with a precision of two after the decimal point.
     # See: https://stackoverflow.com/questions/8885663/how-to-format-a-floating-number-to-fixed-width-in-python
-    card = dbc.Card(dbc.CardBody([html.H5(feature_human_readable, className="card-title"), html.P(ranking_explanation, className="card-subtitle mb-2 text-muted"), html.P(feature_explanation), html.H3(dbc.Badge(f"Ranked {rank} out of {total_number_of_ranks} in the World", color="primary", className="p-2")), html.B(f"Value: {value:4.2f}"), html.H6(bar_chart_title, className="my-3"), bar_chart]), className="my-3")
+    card = dbc.Card(dbc.CardBody([html.H5(feature_human_readable, className="card-title"), html.P(ranking_explanation, className="card-subtitle mb-2 text-muted"), html.P(feature_explanation), html.H3(dbc.Badge(f"Ranked {rank}", color="primary", className="p-2")), html.B(f"Value: {value:4.2f}")]), className="my-2")
     return card
 
 def get_correlation_category(corr_factor):
@@ -236,26 +231,25 @@ def get_correlation_category(corr_factor):
             corr_factor (float): The correlation value itself
 
         Returns:
-            positive (bool): Tells if the correlation value is positive or not.
+            is_positive (bool): Tells if the correlation value is positive or not.
             category (str): Tells to which category this value belongs (negligible, weak, moderate, strong, very strong)
     """
     # Implemented with reference to: https://medium.com/brdata/correlation-straight-to-the-point-e692ab601f4c
-    positive = corr_factor >= 0
+    is_positive = corr_factor >= 0
     abs_corr_factor = abs(corr_factor)
-
     if abs_corr_factor <= 0.3:
-        return (positive, "negligible")
+        return (is_positive, "negligible")
 
     if abs_corr_factor <= 0.5:
-        return (positive, "weak")
+        return (is_positive, "weak")
 
     if abs_corr_factor <= 0.7:
-        return (positive, "moderate")
+        return (is_positive, "moderate")
 
     if abs_corr_factor <= 0.9:
-        return (positive, "strong")
+        return (is_positive, "strong")
 
-    return (positive, "very strong")
+    return (is_positive, "very strong")
 
 def get_simplified_correlation_explanation(corr_factor, first_feature, second_feature, country_name):
     """
@@ -316,6 +310,27 @@ def generate_country_detail(selected_country, from_value):
     country_detail_title = f"General Information about {selected_country} for Year {from_value}"
     return "", OVERLAY_HIDDEN_STYLE, country_detail_title, country_detail 
 
+
+@app.callback(Output("top_5_countries_title", "children"), Output("top_5_countries_overlay", "children"), Output("top_5_countries_overlay", "style"), Output("top_5_countries_bar_chart", "figure"), Input("from", "value"), Input("top_5_countries_feature", "value"))
+def update_top_5_countries(from_value, feature):
+    if from_value == None:
+        return "Top 5 Countries", f"No Year selected", OVERLAY_SHOWN_STYLE,  px.bar()
+    
+    feature_data = FEATURES_DICT.get(feature, None)
+
+    if feature_data == None:
+        return "Top 5 Countries", "Please select a feature", OVERLAY_SHOWN_STYLE, px.bar()
+
+    title = f"Top 5 Countries for {feature} in Year {from_value}"
+    dff = df.copy()
+
+    # First get all data in the same year
+    dff = dff[dff["year"] == int(from_value)]
+
+    # Then sort by the desired feature (e.g life ladder) first 5.
+    dff = dff.sort_values(by=feature_data, ascending=False)
+    dff_top_5 = dff.head(5)
+    return title, "", OVERLAY_HIDDEN_STYLE, px.bar(dff_top_5, x=feature_data, y="country_name", orientation="h")
 
 @app.callback(Output("simplified_explanation_overlay", "children"), Output("simplified_explanation_overlay", "style"), Output("simplified_explanation_container", "children"), Input("selected_country", "value"), Input("first_feature", "value"), Input("second_feature", "value"))
 def generate_simplified_explanation_detail(selected_country, first_feature, second_feature):
