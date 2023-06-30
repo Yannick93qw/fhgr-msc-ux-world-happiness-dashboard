@@ -142,7 +142,7 @@ def generate_world_map():
     hover_data = {"country_name": True, "life_ladder": True, "year": True, "country_code_iso": False}
 
     # We need to map a property inside the geojson to the actual iso code of our country.
-    # Luckily this can easiliy by done via featureidkey, see "Indexing by GeoJSON Properties" https://plotly.com/python/mapbox-county-choropleth/
+    # Luckily this can easily by done via featureidkey, see "Indexing by GeoJSON Properties" on https://plotly.com/python/mapbox-county-choropleth/
     fig = px.choropleth_mapbox(
             dff,
             geojson=geo_world,
@@ -201,9 +201,9 @@ def prepare_layout():
     # Filter
     country_dropdown = dcc.Dropdown(options=country_names, value=INITIAL_COUNTRY_NAME, id='selected_country', multi=False)
     country_div = html.Div([dbc.Label("Select country", html_for="selected_country"), country_dropdown], className="mb-3")
-    from_dropdown = dcc.Dropdown(options=country_years, id="from", value=INITIAL_FROM_VALUE, multi=False)
-    from_div = html.Div([dbc.Label("From", html_for="from"), from_dropdown], className="mb-3")
-    floating_filter = dbc.Form([country_div, from_div], className="p-4 border rounded bg-light position-sticky shadow", style={"bottom": "11rem", "width": "36rem", "left": "calc(50vw - 18rem)", "zIndex": Z_INDEX_FILTER})
+    year_dropdown= dcc.Dropdown(options=country_years, id="year", value=INITIAL_FROM_VALUE, multi=False)
+    year_div= html.Div([dbc.Label("Year", html_for="year"), year_dropdown], className="mb-3")
+    floating_filter = dbc.Form([country_div, year_div], className="p-4 border rounded bg-light position-sticky shadow", style={"bottom": "11rem", "width": "36rem", "left": "calc(50vw - 18rem)", "zIndex": Z_INDEX_FILTER})
 
     return html.Div([app_header, world_map_section, parallel_coordinate_system_section, top_5_countries_section, scatter_plot_section, heatmap_section, floating_filter], className="p-4")
 
@@ -299,30 +299,30 @@ country_names = get_country_names(df)
 country_years = get_country_years(df)
 app.layout = prepare_layout()
 
-@app.callback(Output("country_detail_overlay", "children"), Output("country_detail_overlay", "style"), Output("country_detail_title", "children"), Output("country_detail_container", "children"), Input("selected_country", "value"), Input("from", "value"))
-def update_country_detail(selected_country, from_value):
+@app.callback(Output("country_detail_overlay", "children"), Output("country_detail_overlay", "style"), Output("country_detail_title", "children"), Output("country_detail_container", "children"), Input("selected_country", "value"), Input("year", "value"))
+def update_country_detail(selected_country, year):
     country_detail_title = "General Information"
-    if selected_country == None and from_value == None:
+    if selected_country == None and year == None:
         return "No country and year selected", OVERLAY_SHOWN_STYLE, country_detail_title, [] 
     elif selected_country == None:
         return "No country selected", OVERLAY_SHOWN_STYLE, country_detail_title, [] 
-    elif from_value == None:
+    elif year == None:
         return "No year selected", OVERLAY_SHOWN_STYLE, country_detail_title, [] 
 
     dff = df.copy()
-    dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == int(from_value))]
+    dff_country = dff[(dff["country_name"] == selected_country) & (dff["year"] == int(year))]
     if dff_country.empty:
-        return f"No data found for {selected_country} in Year {from_value}", OVERLAY_SHOWN_STYLE, country_detail_title, [] 
+        return f"No data found for {selected_country} in Year {year}", OVERLAY_SHOWN_STYLE, country_detail_title, [] 
 
     country_detail = [generate_country_card(feature_human_readable, feature, dff_country) for (feature_human_readable, feature) in zip(FEATURES_HUMAN_READABLE, FEATURES_IN_DATA)]
-    country_detail_title = f"General Information about {selected_country} for Year {from_value}"
+    country_detail_title = f"General Information about {selected_country} for Year {year}"
     return "", OVERLAY_HIDDEN_STYLE, country_detail_title, country_detail 
 
 
-@app.callback(Output("top_5_countries_title", "children"), Output("top_5_countries_overlay", "children"), Output("top_5_countries_overlay", "style"), Output("top_5_countries_bar_chart", "figure"), Input("from", "value"), Input("top_5_countries_feature", "value"))
-def update_top_5_countries(from_value, feature):
+@app.callback(Output("top_5_countries_title", "children"), Output("top_5_countries_overlay", "children"), Output("top_5_countries_overlay", "style"), Output("top_5_countries_bar_chart", "figure"), Input("year", "value"), Input("top_5_countries_feature", "value"))
+def update_top_5_countries(year, feature):
     title = "Top 5 Countries"
-    if from_value == None:
+    if year == None:
         return title, f"No Year selected", OVERLAY_SHOWN_STYLE,  px.bar()
 
     feature_data = FEATURES_DICT.get(feature, None)
@@ -330,31 +330,31 @@ def update_top_5_countries(from_value, feature):
     if feature_data == None:
         return title, "Please select a feature", OVERLAY_SHOWN_STYLE, px.bar()
 
-    title = f"Top 5 Countries for {feature} in Year {from_value}"
+    title = f"Top 5 Countries for {feature} in Year {year}"
     dff = df.copy()
 
     # First get all data in the same year
-    dff = dff[dff["year"] == int(from_value)]
+    dff = dff[dff["year"] == int(year)]
 
-    # Then sort by the desired feature (e.g life ladder) first 5.
+    # Then sort by the desired feature (e.g life ladder) and take the first 5.
     dff = dff.sort_values(by=feature_data, ascending=False)
     dff_top_5 = dff.head(5)
     return title, "", OVERLAY_HIDDEN_STYLE, px.bar(dff_top_5, x=feature_data, y="country_name", orientation="h", labels=FEATURES_LABELS)
 
-@app.callback(Output("parallel_coordinate_system_title", "children"), Output("parallel_coordinate_system_overlay", "children"), Output("parallel_coordinate_system_overlay", "style"), Output("parallel_coordinate_system", "figure"), Input("from", "value"), Input("parallel_coordinate_system_features", "value"))
-def update_parallel_coordinate_system(from_value, features_human_readable):
+@app.callback(Output("parallel_coordinate_system_title", "children"), Output("parallel_coordinate_system_overlay", "children"), Output("parallel_coordinate_system_overlay", "style"), Output("parallel_coordinate_system", "figure"), Input("year", "value"), Input("parallel_coordinate_system_features", "value"))
+def update_parallel_coordinate_system(year, features_human_readable):
     # Implemented with reference to: https://plotly.com/python/parallel-coordinates-plot/
     title = f"Compare Features across all Countries"
 
-    if from_value == None:
+    if year == None:
         return title, f"No Year selected", OVERLAY_SHOWN_STYLE, px.parallel_coordinates(pd.DataFrame())
 
     if features_human_readable == None or len(features_human_readable) < 2:
         return title, f"Please select at least two features", OVERLAY_SHOWN_STYLE, px.parallel_coordinates(pd.DataFrame())
 
     dff = df.copy()
-    dff = dff[dff["year"] == int(from_value)]
-    title =  f"Compare Features across all Countries in Year {from_value}"
+    dff = dff[dff["year"] == int(year)]
+    title =  f"Compare Features across all Countries in Year {year}"
     dimensions = [FEATURES_DICT.get(feature_human_readable, "") for feature_human_readable in features_human_readable]
     parallel_coordinates = px.parallel_coordinates(dff, color="life_ladder", dimensions=dimensions, color_continuous_scale=px.colors.sequential.Blues, labels=FEATURES_LABELS)
 
