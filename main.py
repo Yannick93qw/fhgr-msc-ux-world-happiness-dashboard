@@ -1,4 +1,5 @@
 from dash import Dash, dcc, html, Input, Output
+from pandas.plotting import parallel_coordinates
 import plotly.express as px
 import pandas as pd
 import dash_bootstrap_components as dbc
@@ -148,7 +149,7 @@ def generate_world_map():
             animation_frame="year",
             hover_name="country_name",
             hover_data=hover_data,
-            color_continuous_scale=px.colors.sequential.Sunset,
+            color_continuous_scale=px.colors.sequential.Blues,
             zoom=5)
     fig.update_layout(
             height=HEIGHT_CHOROPLETH_MAP,
@@ -172,7 +173,7 @@ def prepare_layout():
     world_map_section = dbc.Row([dbc.Col([world_map], className="col-md-8 col-sm-12"), dbc.Col([country_detail_section], className="col-md-4 col-sm-12")], className="my-2")
 
     # Parallel Coordinate System
-    parallel_coordinate_system_section = dbc.Row([html.H4(id="parallel_coordinate_system_title"), html.Div([html.H5(id="parallel_coordinate_system_overlay", className="justify-content-center align-items-center position-absolute bg-white"), dcc.Graph(id="parallel_coordinate_system")], className="position-relative", style={"minHeight": 250})])
+    parallel_coordinate_system_section = dbc.Row([html.H4(id="parallel_coordinate_system_title"), dbc.Form([dbc.Label("Select multiple Features", html_for="parallel_coordinate_system_features"), dcc.Dropdown(options=FEATURES_HUMAN_READABLE, id="parallel_coordinate_system_features", value=FEATURES_HUMAN_READABLE, multi=True)]),html.Div([html.H5(id="parallel_coordinate_system_overlay", className="justify-content-center align-items-center position-absolute bg-white"), dcc.Graph(id="parallel_coordinate_system")], className="position-relative", style={"minHeight": 250})])
 
     # Top 5 countries bar chart
     top_5_countries_detail = html.Div([html.H5(id="top_5_countries_overlay", className="justify-content-center align-items-center position-absolute bg-white", style=OVERLAY_HIDDEN_STYLE), dcc.Graph(id="top_5_countries_bar_chart")], className="position-relative", style={"minHeight": 250}) 
@@ -335,17 +336,23 @@ def update_top_5_countries(from_value, feature):
     dff_top_5 = dff.head(5)
     return title, "", OVERLAY_HIDDEN_STYLE, px.bar(dff_top_5, x=feature_data, y="country_name", orientation="h")
 
-@app.callback(Output("parallel_coordinate_system_title", "children"), Output("parallel_coordinate_system_overlay", "children"), Output("parallel_coordinate_system_overlay", "style"), Output("parallel_coordinate_system", "figure"), Input("from", "value"))
-def update_parallel_coordinate_system(from_value):
+@app.callback(Output("parallel_coordinate_system_title", "children"), Output("parallel_coordinate_system_overlay", "children"), Output("parallel_coordinate_system_overlay", "style"), Output("parallel_coordinate_system", "figure"), Input("from", "value"), Input("parallel_coordinate_system_features", "value"))
+def update_parallel_coordinate_system(from_value, features_human_readable):
     # Implemented with reference to: https://plotly.com/python/parallel-coordinates-plot/
-    title = f"Compare Countries"
+    title = f"Compare Features across all Countries"
+    print(features_human_readable)
+
     if from_value == None:
         return title, f"No Year selected", OVERLAY_SHOWN_STYLE, px.parallel_coordinates(pd.DataFrame())
+
+    if features_human_readable == None or len(features_human_readable) < 2:
+        return title, f"Please select at least two features", OVERLAY_SHOWN_STYLE, px.parallel_coordinates(pd.DataFrame())
+
     dff = df.copy()
     dff = dff[dff["year"] == int(from_value)]
-    title =  f"Compare Countries in Year {from_value}"
-    dimensions = FEATURES_IN_DATA
-    parallel_coordinates = px.parallel_coordinates(dff, dimensions=dimensions, color_continuous_scale=px.colors.sequential.Sunset)
+    title =  f"Compare Features across all Countries in Year {from_value}"
+    dimensions = [FEATURES_DICT.get(feature_human_readable, "") for feature_human_readable in features_human_readable]
+    parallel_coordinates = px.parallel_coordinates(dff, color="life_ladder", dimensions=dimensions, color_continuous_scale=px.colors.sequential.Blues)
     
     return title, "", OVERLAY_HIDDEN_STYLE, parallel_coordinates
 
